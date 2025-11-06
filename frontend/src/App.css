@@ -1,0 +1,95 @@
+.app {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 30px;
+  padding-bottom: 20px;
+  border-bottom: 2px solid #333;
+}
+
+header h1 {
+  margin: 0;
+  font-size: 24px;
+}
+
+.status {
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-weight: bold;
+}
+
+.status.connected {
+  background-color: #4caf50;
+  color: white;
+}
+
+.status.disconnected {
+  background-color: #f44336;
+  color: white;
+}
+
+.chat-section {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.messages-list {
+  border: 1px solid #333;
+  border-radius: 8px;
+  padding: 20px;
+  min-height: 400px;
+  max-height: 400px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.message {
+  padding: 10px 15px;
+  background-color: #2a2a2a;
+  border-radius: 6px;
+  word-wrap: break-word;
+}
+
+.input-section {
+  display: flex;
+  gap: 10px;
+}
+
+.input-section input {
+  flex: 1;
+  padding: 12px;
+  font-size: 16px;
+  border: 1px solid #333;
+  border-radius: 6px;
+  background-color: #1a1a1a;
+  color: white;
+}
+
+.input-section button {
+  padding: 12px 24px;
+  font-size: 16px;
+  background-color: #007acc;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.input-section button:hover {
+  background-color: #005a9e;
+}
+
+.input-section button:active {
+  background-color: #004578;
+}
+
