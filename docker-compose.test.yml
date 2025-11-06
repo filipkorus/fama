@@ -1,0 +1,57 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database for Tests
+  db-test:
+    image: postgres:15-alpine
+    container_name: fama-db-test
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-cryptography_test_db}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # Backend Tests
+  backend-test:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: fama-backend-test
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db-test:5432/${POSTGRES_DB:-cryptography_test_db}
+      FLASK_TESTING: "True"
+      SECRET_KEY: test-secret-key
+    depends_on:
+      db-test:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app
+    command: >
+      sh -c "
+        echo 'Installing test dependencies...' &&
+        pip install -q pytest pytest-flask pytest-cov &&
+        echo 'Running backend tests...' &&
+        pytest -v --cov=. --cov-report=term-missing &&
+        echo 'Backend tests completed!'
+      "
+
+  # Frontend Tests
+  frontend-test:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.test
+    container_name: fama-frontend-test
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    command: >
+      sh -c "
+        echo '🧪 Running frontend tests...' &&
+        npm run test:coverage -- --run --reporter=verbose &&
+        echo '✅ Frontend tests completed!'
+      "
+    tty: true
