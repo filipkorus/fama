@@ -94,7 +94,6 @@ NGINX_PORT=8080
 **Uwagi:**
 - To główny port przez który użytkownicy uzyskują dostęp do aplikacji
 - W produkcji zazwyczaj 80 (HTTP) lub 443 (HTTPS)
-- Jeśli port jest zajęty, zmień na inny (np. 8081, 8082)
 
 ## 📝 Przykładowe konfiguracje
 
@@ -155,48 +154,6 @@ NGINX_PORT=80
 CORS_ORIGINS=https://yourdomain.com
 ```
 
-## 🔒 Best Practices
-
-### Bezpieczeństwo
-
-1. **Nigdy nie commituj pliku `.env`** do repozytorium
-   - `.env` jest w `.gitignore`
-   - Użyj `.env.example` jako template
-
-2. **Zmień SECRET_KEY w produkcji**
-   - Użyj długiego, losowego ciągu znaków
-   - Przechowuj bezpiecznie (np. w secrets manager)
-
-3. **Użyj silnych haseł do bazy danych**
-   - Minimum 16 znaków
-   - Mix wielkich/małych liter, cyfr, symboli
-   - Nie używaj słownikowych słów
-
-4. **Ogranicz CORS_ORIGINS w produkcji**
-   - Lista konkretnych domen
-   - Nigdy `*` w produkcji
-
-5. **Wyłącz FLASK_DEBUG w produkcji**
-   - Debug mode ujawnia wrażliwe informacje
-   - Używaj tylko w development
-
-### Zarządzanie
-
-1. **Różne ENV dla różnych środowisk**
-   ```
-   .env.development
-   .env.staging
-   .env.production
-   ```
-
-2. **Dokumentuj zmiany**
-   - Aktualizuj `.env.example` przy dodawaniu zmiennych
-   - Dodaj komentarze wyjaśniające
-
-3. **Walidacja konfiguracji**
-   - Sprawdź czy wszystkie wymagane zmienne są ustawione
-   - Użyj sensownych default values
-
 ## 🔧 Zaawansowane użycie
 
 ### Używanie różnych plików .env
@@ -211,7 +168,7 @@ docker-compose --env-file .env.production up
 
 ### Override w docker-compose
 
-Stwórz `docker-compose.override.yml` (nie commituj):
+Stwórz `docker-compose.override.yml`:
 
 ```yaml
 version: '3.8'
@@ -234,26 +191,6 @@ services:
       # Nadpisz zmienną tylko dla backendu
       CUSTOM_BACKEND_VAR: "value"
 ```
-
-### Secrets w Docker Swarm/Kubernetes
-
-W produkcji, rozważ użycie:
-- Docker Secrets (Swarm)
-- Kubernetes Secrets
-- AWS Secrets Manager
-- Azure Key Vault
-- HashiCorp Vault
-
-## ✅ Checklist przed deploymentem
-
-- [ ] SECRET_KEY zmieniony na losowy
-- [ ] POSTGRES_PASSWORD silne i unikalne
-- [ ] FLASK_DEBUG=False
-- [ ] CORS_ORIGINS ograniczone do Twoich domen
-- [ ] VITE_API_URL wskazuje na produkcyjny URL
-- [ ] Wszystkie zmienne są udokumentowane
-- [ ] `.env` NIE jest w repozytorium
-- [ ] Backup `.env` jest bezpiecznie przechowywany
 
 ## 🆘 Troubleshooting
 
