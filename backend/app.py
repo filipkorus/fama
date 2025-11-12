@@ -1,13 +1,25 @@
 from flask import Flask, jsonify, request
 from flask_socketio import SocketIO, emit, join_room, leave_room
+from flask_jwt_extended import JWTManager
 from config import Config
+from database import db
 import os
 
 app = Flask(__name__)
 app.config.from_object(Config)
 
+# Initialize database
+db.init_app(app)
+
+# Initialize JWT
+jwt = JWTManager(app)
+
 # Initialize SocketIO
 socketio = SocketIO(app, cors_allowed_origins="*")
+
+# Register blueprints
+from api.auth import auth_bp
+app.register_blueprint(auth_bp)
 
 # Store connected users {session_id: username}
 connected_users = {}
@@ -98,6 +110,10 @@ def handle_message(data):
         emit('message', {**message_data, 'echo': True})
 
 if __name__ == '__main__':
+    # Create database tables only when running directly
+    with app.app_context():
+        db.create_all()
+
     socketio.run(
         app,
         host='0.0.0.0',
