@@ -2,31 +2,50 @@ import pytest
 import sys
 import os
 
+# CRITICAL: Set test database BEFORE any imports
+os.environ['DATABASE_URL'] = 'sqlite:///:memory:'
+
 # Add parent directory to path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from app import app, socketio
-from config import Config
+from datetime import timedelta
+from app import app as flask_app, socketio
+from database import db as _db
 
-class TestConfig(Config):
+class TestConfig:
     """Test configuration"""
     TESTING = True
     DEBUG = False
     SECRET_KEY = 'test-secret-key'
+    JWT_SECRET_KEY = 'test-jwt-secret-key'
+    SQLALCHEMY_DATABASE_URI = 'sqlite:///:memory:'
+    SQLALCHEMY_TRACK_MODIFICATIONS = False
+    JWT_ACCESS_TOKEN_EXPIRES = timedelta(hours=1)
+    JWT_REFRESH_TOKEN_EXPIRES = timedelta(days=30)
+    JWT_COOKIE_SECURE = False
+    VALIDATE_PASSWORD_STRENGTH = False
+
+# Apply test configuration
+flask_app.config.from_object(TestConfig)
+
+@pytest.fixture(scope='function')
+def app():
+    """Create and configure a test app instance"""
+    with flask_app.app_context():
+        _db.create_all()
+        yield flask_app
+        _db.session.remove()
+        _db.drop_all()
 
 @pytest.fixture
-def client():
+def client(app):
     """Create a test client"""
-    app.config.from_object(TestConfig)
-    
     with app.test_client() as client:
         yield client
 
 @pytest.fixture
-def socketio_client():
+def socketio_client(app):
     """Create a Socket.IO test client"""
-    app.config.from_object(TestConfig)
-    
     client = socketio.test_client(app)
     yield client
     client.disconnect()
