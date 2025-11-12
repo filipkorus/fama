@@ -25,6 +25,8 @@ services:
       DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db-test:5432/${POSTGRES_DB:-cryptography_test_db}
       FLASK_TESTING: "True"
       SECRET_KEY: test-secret-key
+      JWT_SECRET_KEY: test-jwt-secret-key
+      VALIDATE_PASSWORD_STRENGTH: "False"
     depends_on:
       db-test:
         condition: service_healthy
@@ -32,11 +34,13 @@ services:
       - ./backend:/app
     command: >
       sh -c "
-        echo 'Installing test dependencies...' &&
-        pip install -q pytest pytest-flask pytest-cov &&
+        echo 'Installing dependencies...' &&
+        pip install -q -r requirements.txt &&
+        echo 'Waiting for database to be ready...' &&
+        sleep 2 &&
         echo 'Running backend tests...' &&
         pytest -v --cov=. --cov-report=term-missing &&
-        echo 'Backend tests completed!'
+        echo '✅ Backend tests completed!'
       "
 
   # Frontend Tests
