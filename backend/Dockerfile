@@ -1,16 +1,42 @@
-FROM python:3.11-slim
+FROM python:3.12-slim
 
 WORKDIR /app
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
-    gcc \
+    build-essential \
+    cmake \
+    curl \
+    unzip \
+    libssl-dev \
+    pkg-config \
     postgresql-client \
     && rm -rf /var/lib/apt/lists/*
 
+# Download and extract liboqs 0.14.0 from GitHub
+RUN curl -L https://github.com/open-quantum-safe/liboqs/archive/refs/tags/0.14.0.zip -o /tmp/liboqs.zip && \
+    unzip -q /tmp/liboqs.zip -d /tmp && \
+    rm /tmp/liboqs.zip && \
+    mv /tmp/liboqs-0.14.0 /tmp/liboqs && \
+    mkdir -p /tmp/liboqs/build && \
+    cd /tmp/liboqs/build && \
+    cmake -DCMAKE_INSTALL_PREFIX=/usr/local \
+            -DBUILD_SHARED_LIBS=ON \
+            -DOQS_ENABLE_SIG_DILITHIUM=ON \
+            -DOQS_ENABLE_SIG_FALCON=ON \
+            -DOQS_ENABLE_SIG_SPHINCS=ON \
+            -DOQS_ENABLE_KEM_KYBER=ON \
+            -DOQS_USE_OPENSSL=ON \
+            .. && \
+    make -j$(nproc) && \
+    make install && \
+    ldconfig && \
+    rm -rf /tmp/liboqs
+
 # Copy requirements and install Python dependencies
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir --upgrade pip setuptools wheel && \
+    pip install --no-cache-dir -r requirements.txt
 
 # Copy application code
 COPY . .
