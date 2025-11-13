@@ -2,11 +2,16 @@
 
 ## Przegląd
 
-Moduł autoryzacji zapewnia bezpieczny system rejestracji i logowania użytkowników z wykorzystaniem tokenów JWT (JSON Web Tokens). 
+Moduł autoryzacji zapewnia bezpieczny system rejestracji i logowania użytkowników z wykorzystaniem tokenów JWT (JSON Web Tokens).
 
 **Mechanizm tokenów:**
 - **Access Token** - wysyłany w odpowiedzi JSON, używany do autoryzacji zapytań API
 - **Refresh Token** - wysyłany jako HTTP-only cookie, używany do odświeżania access tokenów
+
+**Obsługa wielu urządzeń:**
+- Każdy użytkownik może mieć wiele urządzeń (telefon, laptop, tablet)
+- Każde urządzenie ma swój unikalny klucz publiczny ML-KEM do szyfrowania post-kwantowego
+- Nazwy urządzeń są automatycznie generowane z User-Agent lub mogą być ustawione ręcznie
 
 > **Ważne:** Refresh tokeny są przechowywane wyłącznie w HTTP-only cookies dla zwiększenia bezpieczeństwa. Access tokeny nadal są zwracane w JSON i powinny być przechowywane bezpiecznie po stronie klienta.
 
@@ -18,13 +23,15 @@ Wszystkie endpointy znajdują się pod prefiksem `/api/auth`.
 
 **Endpoint:** `POST /api/auth/register`
 
-**Opis:** Tworzy nowe konto użytkownika.
+**Opis:** Tworzy nowe konto użytkownika i rejestruje pierwsze urządzenie. Użytkownik musi wygenerować parę kluczy ML-KEM (Kyber) po stronie klienta i przesłać klucz publiczny. Klucz prywatny NIGDY nie powinien być wysyłany do serwera.
 
 **Żądanie:**
 ```json
 {
   "username": "string",
-  "password": "string"
+  "password": "string",
+  "public_key": "string (Base64-encoded ML-KEM public key)",
+  "device_name": "string (optional, e.g., 'iPhone 15 Pro', 'MacBook Pro')"
 }
 ```
 
@@ -39,6 +46,15 @@ Wszystkie endpointy znajdują się pod prefiksem `/api/auth`.
   - Minimum 8 znaków
   - Walidacja siły hasła (wielkie/małe litery, cyfry) jest opcjonalna i kontrolowana przez `VALIDATE_PASSWORD_STRENGTH` w konfiguracji
 
+- **Public Key:**
+  - Format: Base64-encoded string
+  - Rozmiar zdekodowany: 800 bytes (Kyber512), 1184 bytes (Kyber768), lub 1568 bytes (Kyber1024)
+  - Generowany z biblioteki `liboqs-python` lub kompatybilnej implementacji ML-KEM
+
+- **Device Name (opcjonalne):**
+  - Jeśli nie podany, zostanie automatycznie wygenerowany z User-Agent
+  - Przykłady: "Chrome 120 on Windows 10", "Safari 17 on iPhone", "Firefox 119 on Ubuntu"
+
 **Odpowiedź sukcesu (201):**
 
 ```json
@@ -50,6 +66,13 @@ Wszystkie endpointy znajdują się pod prefiksem `/api/auth`.
     "created_at": "2024-01-15T10:30:00",
     "updated_at": "2024-01-15T10:30:00"
   },
+  "device": {
+    "id": 1,
+    "device_name": "Chrome 120 on Windows 10",
+    "public_key": "OwOc0pQrXx...",
+    "created_at": "2024-01-15T10:30:00",
+    "last_used_at": "2024-01-15T10:30:00"
+  },
   "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
 }
 ```
@@ -59,7 +82,7 @@ Wszystkie endpointy znajdują się pod prefiksem `/api/auth`.
 
 **Błędy:**
 
-- `400` - Nieprawidłowe dane wejściowe lub użytkownik już istnieje
+- `400` - Nieprawidłowe dane wejściowe (username, password, lub public_key), lub użytkownik już istnieje
 - `500` - Błąd serwera
 
 **Przykład użycia (axios):**
@@ -67,15 +90,32 @@ Wszystkie endpointy znajdują się pod prefiksem `/api/auth`.
 ```javascript
 import axios from 'axios';
 
+// Krok 1: Wygeneruj parę kluczy ML-KEM po stronie klienta
+// UWAGA: Wymaga biblioteki liboqs-node lub WebAssembly implementation
+const crypto = new MLKEMCrypto('Kyber768');
+const { publicKey, privateKey } = await crypto.generateKeypair();
+
+// WAŻNE: Przechowaj privateKey bezpiecznie po stronie klienta!
+// NIGDY nie wysyłaj privateKey do serwera!
+localStorage.setItem('ml_kem_private_key', privateKey);
+
+// Krok 2: Zarejestruj się z kluczem publicznym
 const response = await axios.post('/api/auth/register', {
   username: 'nowyuzytkownik',
-  password: 'Haslo123'
+  password: 'Haslo123',
+  public_key: publicKey, // Base64-encoded
+  device_name: 'Moj Laptop' // Opcjonalne - jeśli brak, użyje User-Agent
 }, {
   withCredentials: true // Umożliwia odbieranie cookies
 });
 
 console.log(response.data);
-// { message: "User registered successfully", user: {...}, access_token: "..." }
+// {
+//   message: "User registered successfully",
+//   user: { id: 1, username: "nowyuzytkownik", ... },
+//   device: { id: 1, device_name: "Moj Laptop", public_key: "...", ... },
+//   access_token: "..."
+// }
 ```
 
 ---

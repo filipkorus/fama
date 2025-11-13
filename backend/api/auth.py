@@ -13,10 +13,51 @@ from flask_jwt_extended import (
 )
 from datetime import datetime, timedelta
 from database import db
-from models import User, RefreshToken
+from models import User, RefreshToken, UserDevice
 import re
+import base64
+from user_agents import parse
 
 auth_bp = Blueprint('auth', __name__, url_prefix='/api/auth')
+
+
+def generate_device_name_from_user_agent(user_agent_string):
+    """
+    Generate a device name from User-Agent string
+    Examples: "Chrome 120 on Windows 10", "Safari 17 on iPhone", "Firefox 119 on Ubuntu"
+    """
+    if not user_agent_string:
+        return "Unknown Device"
+
+    try:
+        user_agent = parse(user_agent_string)
+
+        # Browser info
+        browser = f"{user_agent.browser.family} {user_agent.browser.version_string.split('.')[0]}" if user_agent.browser.family else "Unknown Browser"
+
+        # OS info
+        os_name = user_agent.os.family if user_agent.os.family else "Unknown OS"
+        os_version = user_agent.os.version_string.split('.')[0] if user_agent.os.version_string else ""
+
+        # Device type (mobile, tablet, pc)
+        if user_agent.is_mobile:
+            device_type = user_agent.device.family if user_agent.device.family != "Other" else "Mobile"
+        elif user_agent.is_tablet:
+            device_type = "Tablet"
+        else:
+            device_type = ""
+
+        # Construct name
+        if device_type and device_type not in os_name:
+            if os_version:
+                return f"{browser} on {device_type} ({os_name} {os_version})"
+            return f"{browser} on {device_type} ({os_name})"
+        else:
+            if os_version:
+                return f"{browser} on {os_name} {os_version}"
+            return f"{browser} on {os_name}"
+    except Exception:
+        return "Unknown Device"
 
 
 def validate_username(username):
@@ -62,6 +103,30 @@ def validate_password(password, validate_strength=None):
     return True, ""
 
 
+def validate_public_key(public_key):
+    """
+    Validate ML-KEM public key format
+    - Must be valid Base64 string
+    - Expected sizes: ~800 bytes (Kyber512), ~1184 bytes (Kyber768), ~1568 bytes (Kyber1024)
+    """
+    if not public_key or not isinstance(public_key, str):
+        return False, "Public key is required and must be a string"
+
+    try:
+        decoded = base64.b64decode(public_key)
+        key_size = len(decoded)
+
+        # Valid ML-KEM public key sizes
+        valid_sizes = [800, 1184, 1568]  # Kyber512, Kyber768, Kyber1024
+
+        if key_size not in valid_sizes:
+            return False, f"Invalid public key size: {key_size} bytes. Expected: {valid_sizes}"
+
+        return True, ""
+    except Exception as e:
+        return False, f"Invalid Base64 format: {str(e)}"
+
+
 @auth_bp.route('/register', methods=['POST'])
 def register():
     """
@@ -70,7 +135,9 @@ def register():
     Request JSON:
         {
             "username": "string",
-            "password": "string"
+            "password": "string",
+            "public_key": "string (Base64-encoded ML-KEM public key)",
+            "device_name": "string (optional, e.g., 'iPhone 15', 'Chrome Desktop')"
         }
 
     Returns:
@@ -86,6 +153,13 @@ def register():
 
         username = data.get('username', '').strip()
         password = data.get('password', '')
+        public_key = data.get('public_key', '').strip()
+        device_name = data.get('device_name', '').strip()
+
+        # Generate device name from User-Agent if not provided
+        if not device_name:
+            user_agent = request.headers.get('User-Agent', '')
+            device_name = generate_device_name_from_user_agent(user_agent)
 
         # Validate username
         valid, error = validate_username(username)
@@ -94,6 +168,11 @@ def register():
 
         # Validate password
         valid, error = validate_password(password)
+        if not valid:
+            return jsonify({'error': error}), 400
+
+        # Validate public key
+        valid, error = validate_public_key(public_key)
         if not valid:
             return jsonify({'error': error}), 400
 
@@ -107,6 +186,15 @@ def register():
         user.set_password(password)
 
         db.session.add(user)
+        db.session.flush()  # Get user.id before commit
+
+        # Create device record with public key
+        device = UserDevice(
+            user_id=user.id,
+            device_name=device_name,
+            public_key=public_key
+        )
+        db.session.add(device)
         db.session.commit()
 
         # Create tokens
@@ -129,6 +217,7 @@ def register():
         response_data = {
             'message': 'User registered successfully',
             'user': user.to_dict(),
+            'device': device.to_dict(),
             'access_token': access_token
         }
 

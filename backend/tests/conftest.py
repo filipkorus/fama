@@ -48,4 +48,20 @@ def socketio_client(app):
     """Create a Socket.IO test client"""
     client = socketio.test_client(app)
     yield client
-    client.disconnect()
+
+@pytest.fixture
+def sample_public_key():
+    """Generate a valid ML-KEM public key for testing"""
+    import base64
+    # TODO: Uncomment when crypto.ml_kem is ready
+    # try:
+    #     from crypto.ml_kem import MLKEMCrypto
+    #     crypto = MLKEMCrypto('Kyber768')
+    #     pub_key, _ = crypto.generate_keypair()
+    #     return base64.b64encode(pub_key).decode('utf-8')
+    # except Exception:
+    #     pass
+
+    # Fallback: generate fake key with correct size (1184 bytes for Kyber768)
+    fake_key = b'0' * 1184
+    return base64.b64encode(fake_key).decode('utf-8')
