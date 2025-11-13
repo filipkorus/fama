@@ -49,3 +49,30 @@ class RefreshToken(db.Model):
     def __repr__(self):
         return f'<RefreshToken {self.jti}>'
 
+
+class UserDevice(db.Model):
+    """Model for storing user devices with their ML-KEM public keys"""
+    __tablename__ = 'user_devices'
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    device_name = db.Column(db.String(100), nullable=True)  # e.g., "iPhone 15", "Chrome Desktop"
+    public_key = db.Column(db.Text, nullable=False)  # ML-KEM public key (Base64)
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    last_used_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+
+    user = db.relationship('User', backref=db.backref('devices', lazy=True))
+
+    def __repr__(self):
+        return f'<UserDevice {self.device_name or "Unnamed"} for user_id={self.user_id}>'
+
+    def to_dict(self):
+        """Convert device object to dictionary"""
+        return {
+            'id': self.id,
+            'device_name': self.device_name,
+            'public_key': self.public_key,
+            'created_at': self.created_at.isoformat(),
+            'last_used_at': self.last_used_at.isoformat()
+        }
+
