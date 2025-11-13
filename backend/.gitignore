@@ -16,3 +16,4 @@ htmlcov/
 *.db
 *.sqlite
 .env
+liboqs*/
