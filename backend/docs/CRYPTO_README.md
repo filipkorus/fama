@@ -15,8 +15,36 @@ backend/crypto/
 ## Wymagania
 
 ```bash
-pip install liboqs-python pycryptodome
+pip install -r requirements.txt
 ```
+
+> [!IMPORTANT]
+> **Ważna uwaga o instalacji liboqs-python:**
+>
+> Pakiet `liboqs-python` dostępny w PyPI (wersja 0.14.1) to jedynie **wrapper (nakładka) Pythona** na bibliotekę `liboqs` napisaną w C. Samo `pip install liboqs-python` **nie instaluje** biblioteki systemowej `liboqs`, którą wrapper próbuje się podłączyć.
+>
+> **Co to znaczy?**
+> - `liboqs-python 0.14.1` — wrapper Pythona (pobierany z PyPI)
+> - `liboqs 0.14.0` — rzeczywista biblioteka C, którą wrapper opakowuje (musi być zainstalowana systemowo)
+>
+> Wrapper próbuje znaleźć bibliotekę `liboqs` w standardowych lokalizacjach systemowych (np. `/usr/local/lib/liboqs.so`).
+
+### Instalacja na Lokalnym Systemie
+
+Jeśli chcesz pracować lokalnie, musisz zainstalować bibliotekę `liboqs 0.14.0`:
+
+- Rozpakuj pliki biblioteki umieszczone w katalogu repozytorium `liboqs-0.14.0.zip`. Jest to oficjalny plik pobrany ze strony: https://github.com/open-quantum-safe/liboqs.
+- Upewnij się, że w pliku requirements jest wpis z wrapperem pythona do biblioteki:
+
+```bash
+liboqs-python==0.14.1
+```
+
+- Po uruchomieniu backendu, biblioteka powinna zostać zainstalowana z rozpakowanego katalogu.
+
+### Instalacja w Docker
+
+W projekcie FAMA dockerfile automatycznie pobiera i kompiluje `liboqs 0.14.0` z oficjalnego repozytorium GitHub, zatem nie musisz robić nic ręcznie.
 
 ## Testowanie Instalacji
 
@@ -174,7 +202,7 @@ pip install liboqs-python
 ```
 
 > [!IMPORTANT]  
-> Należy mieć zainstalowany CMAKE na komputerze, biblioteka python-liboqs jest nakładką na prawdziwą bibliotekę napisaną w C. Musi zostać skompilowane.
+> Jeśli po instalacji `liboqs-python` wciąż dostajesz ten błąd, oznacza to, że brakuje biblioteki systemowej `liboqs`. Zainstaluj ją według instrukcji w sekcji [Instalacja na Lokalnym Systemie](#instalacja-na-lokalnym-systemie).
 
 ### `ValueError: Tag verification failed`
 
