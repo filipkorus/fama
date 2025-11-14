@@ -33,13 +33,7 @@ pip install -r requirements.txt
 
 Jeśli chcesz pracować lokalnie, musisz zainstalować bibliotekę `liboqs 0.14.0`:
 
-- Rozpakuj pliki biblioteki umieszczone w katalogu repozytorium `liboqs-0.14.0.zip`. Jest to oficjalny plik pobrany ze strony: https://github.com/open-quantum-safe/liboqs.
-- Upewnij się, że w pliku requirements jest wpis z wrapperem pythona do biblioteki:
-
-```bash
-liboqs-python==0.14.1
-```
-
+- Pobierz kod źródłowy biblioteki `liboqs` w wersji 0.14.0 klikając w [ten link](https://github.com/open-quantum-safe/liboqs/archive/refs/tags/0.14.0.zip). Następnie rozpakuj archiwum.
 - Po uruchomieniu backendu, biblioteka powinna zostać zainstalowana z rozpakowanego katalogu.
 
 ### Instalacja w Docker
