@@ -483,3 +483,351 @@ class TestAuthAPI:
         user = User.query.filter_by(username='multitoken').first()
         tokens = RefreshToken.query.filter_by(user_id=user.id, revoked=False).all()
         assert len(tokens) == 2
+
+
+class TestPublicKeysAPI:
+    """Test class for public keys retrieval endpoints"""
+
+    def test_search_users_success(self, client, sample_public_key):
+        """Test successful user search"""
+        # Create test users
+        client.post('/api/auth/register', json={
+            'username': 'alice',
+            'password': 'TestPass123',
+            'public_key': sample_public_key
+        })
+        client.post('/api/auth/register', json={
+            'username': 'alice123',
+            'password': 'TestPass123',
+            'public_key': sample_public_key
+        })
+        client.post('/api/auth/register', json={
+            'username': 'bob',
+            'password': 'TestPass123',
+            'public_key': sample_public_key
+        })
+
+        # Login to get access token
+        login_response = client.post('/api/auth/login', json={
+            'username': 'alice',
+            'password': 'TestPass123'
+        })
+        access_token = login_response.get_json()['access_token']
+
+        # Search for users
+        response = client.get('/api/auth/users/search?query=alice', headers={
+            'Authorization': f'Bearer {access_token}'
+        })
+
+        assert response.status_code == 200
+        data = response.get_json()
+
+        # Check response structure
+        assert 'users' in data
+        assert 'pagination' in data
+
+        # Check pagination metadata
+        assert data['pagination']['page'] == 1
+        assert data['pagination']['per_page'] == 10
+        assert data['pagination']['total_count'] == 2
+        assert data['pagination']['total_pages'] == 1
+        assert data['pagination']['has_next'] is False
+        assert data['pagination']['has_prev'] is False
+
+        # Check users data
+        assert len(data['users']) == 2
+        for user in data['users']:
+            assert 'user_id' in user
+            assert 'username' in user
+            assert 'devices' in user
+            assert 'alice' in user['username']
+            # Check minimal device info (privacy)
+            for device in user['devices']:
+                assert 'device_id' in device
+                assert 'public_key' in device
+                assert 'device_name' not in device
+                assert 'created_at' not in device
+                assert 'last_used_at' not in device
+
+    def test_search_users_with_pagination(self, client, sample_public_key):
+        """Test user search with pagination"""
+        # Create multiple users
+        for i in range(15):
+            client.post('/api/auth/register', json={
+                'username': f'user{i}',
+                'password': 'TestPass123',
+                'public_key': sample_public_key
+            })
+
+        # Login
+        login_response = client.post('/api/auth/login', json={
+            'username': 'user0',
+            'password': 'TestPass123'
+        })
+        access_token = login_response.get_json()['access_token']
+
+        # Test page 1
+        response = client.get('/api/auth/users/search?query=user&page=1&per_page=10', headers={
+            'Authorization': f'Bearer {access_token}'
+        })
+
+        assert response.status_code == 200
+        data = response.get_json()
+        assert len(data['users']) == 10
+        assert data['pagination']['page'] == 1
+        assert data['pagination']['total_count'] == 15
+        assert data['pagination']['total_pages'] == 2
+        assert data['pagination']['has_next'] is True
+        assert data['pagination']['has_prev'] is False
+
+        # Test page 2
+        response = client.get('/api/auth/users/search?query=user&page=2&per_page=10', headers={
+            'Authorization': f'Bearer {access_token}'
+        })
+
+        assert response.status_code == 200
+        data = response.get_json()
+        assert len(data['users']) == 5
+        assert data['pagination']['page'] == 2
+        assert data['pagination']['has_next'] is False
+        assert data['pagination']['has_prev'] is True
+
+    def test_search_users_invalid_query(self, client, sample_public_key):
+        """Test user search with invalid query"""
+        # Register and login
+        client.post('/api/auth/register', json={
+            'username': 'testuser',
+            'password': 'TestPass123',
+            'public_key': sample_public_key
+        })
+        login_response = client.post('/api/auth/login', json={
+            'username': 'testuser',
+            'password': 'TestPass123'
+        })
+        access_token = login_response.get_json()['access_token']
+
+        # Test missing query
+        response = client.get('/api/auth/users/search', headers={
+            'Authorization': f'Bearer {access_token}'
+        })
+        assert response.status_code == 400
+        assert 'error' in response.get_json()
+
+        # Test query too short
+        response = client.get('/api/auth/users/search?query=a', headers={
+            'Authorization': f'Bearer {access_token}'
+        })
+        assert response.status_code == 400
+        assert 'at least 2 characters' in response.get_json()['error']
+
+    def test_search_users_no_results(self, client, sample_public_key):
+        """Test user search with no matching results"""
+        client.post('/api/auth/register', json={
+            'username': 'testuser',
+            'password': 'TestPass123',
+            'public_key': sample_public_key
+        })
+        login_response = client.post('/api/auth/login', json={
+            'username': 'testuser',
+            'password': 'TestPass123'
+        })
+        access_token = login_response.get_json()['access_token']
+
+        response = client.get('/api/auth/users/search?query=nonexistent', headers={
+            'Authorization': f'Bearer {access_token}'
+        })
+
+        assert response.status_code == 200
+        data = response.get_json()
+        assert len(data['users']) == 0
+        assert data['pagination']['total_count'] == 0
+
+    def test_search_users_unauthorized(self, client):
+        """Test user search without authentication"""
+        response = client.get('/api/auth/users/search?query=test')
+        assert response.status_code == 401
+
+    def test_get_user_public_keys_by_id(self, client, sample_public_key):
+        """Test getting user public keys by user ID"""
+        # Register two users
+        response1 = client.post('/api/auth/register', json={
+            'username': 'alice',
+            'password': 'TestPass123',
+            'public_key': sample_public_key
+        })
+        target_user_id = response1.get_json()['user']['id']
+
+        client.post('/api/auth/register', json={
+            'username': 'bob',
+            'password': 'TestPass123',
+            'public_key': sample_public_key
+        })
+
+        # Login as bob to get access token
+        login_response = client.post('/api/auth/login', json={
+            'username': 'bob',
+            'password': 'TestPass123'
+        })
+        access_token = login_response.get_json()['access_token']
+
+        # Get alice's public keys
+        response = client.get(f'/api/auth/users/{target_user_id}/public-keys', headers={
+            'Authorization': f'Bearer {access_token}'
+        })
+
+        assert response.status_code == 200
+        data = response.get_json()
+
+        # Check response structure
+        assert 'user_id' in data
+        assert 'username' in data
+        assert 'devices' in data
+        assert data['user_id'] == target_user_id
+        assert data['username'] == 'alice'
+
+        # Check minimal device info
+        assert len(data['devices']) > 0
+        for device in data['devices']:
+            assert 'device_id' in device
+            assert 'public_key' in device
+            assert 'device_name' not in device
+            assert 'created_at' not in device
+
+    def test_get_user_public_keys_by_id_not_found(self, client, sample_public_key):
+        """Test getting public keys for non-existent user ID"""
+        client.post('/api/auth/register', json={
+            'username': 'testuser',
+            'password': 'TestPass123',
+            'public_key': sample_public_key
+        })
+        login_response = client.post('/api/auth/login', json={
+            'username': 'testuser',
+            'password': 'TestPass123'
+        })
+        access_token = login_response.get_json()['access_token']
+
+        response = client.get('/api/auth/users/99999/public-keys', headers={
+            'Authorization': f'Bearer {access_token}'
+        })
+
+        assert response.status_code == 404
+        assert 'error' in response.get_json()
+
+    def test_get_user_public_keys_by_id_unauthorized(self, client):
+        """Test getting public keys without authentication"""
+        response = client.get('/api/auth/users/1/public-keys')
+        assert response.status_code == 401
+
+    def test_get_user_public_keys_by_username(self, client, sample_public_key):
+        """Test getting user public keys by username"""
+        # Register users
+        client.post('/api/auth/register', json={
+            'username': 'alice',
+            'password': 'TestPass123',
+            'public_key': sample_public_key
+        })
+        client.post('/api/auth/register', json={
+            'username': 'bob',
+            'password': 'TestPass123',
+            'public_key': sample_public_key
+        })
+
+        # Login as bob
+        login_response = client.post('/api/auth/login', json={
+            'username': 'bob',
+            'password': 'TestPass123'
+        })
+        access_token = login_response.get_json()['access_token']
+
+        # Get alice's public keys by username
+        response = client.get('/api/auth/users/alice/public-keys', headers={
+            'Authorization': f'Bearer {access_token}'
+        })
+
+        assert response.status_code == 200
+        data = response.get_json()
+
+        assert 'user_id' in data
+        assert 'username' in data
+        assert 'devices' in data
+        assert data['username'] == 'alice'
+
+        # Check minimal device info
+        for device in data['devices']:
+            assert 'device_id' in device
+            assert 'public_key' in device
+            assert 'device_name' not in device
+
+    def test_get_user_public_keys_by_username_not_found(self, client, sample_public_key):
+        """Test getting public keys for non-existent username"""
+        client.post('/api/auth/register', json={
+            'username': 'testuser',
+            'password': 'TestPass123',
+            'public_key': sample_public_key
+        })
+        login_response = client.post('/api/auth/login', json={
+            'username': 'testuser',
+            'password': 'TestPass123'
+        })
+        access_token = login_response.get_json()['access_token']
+
+        response = client.get('/api/auth/users/nonexistent/public-keys', headers={
+            'Authorization': f'Bearer {access_token}'
+        })
+
+        assert response.status_code == 404
+        assert 'error' in response.get_json()
+
+    def test_get_user_public_keys_by_username_unauthorized(self, client):
+        """Test getting public keys by username without authentication"""
+        response = client.get('/api/auth/users/testuser/public-keys')
+        assert response.status_code == 401
+
+    def test_pagination_edge_cases(self, client, sample_public_key):
+        """Test pagination with edge cases"""
+        # Create 5 users
+        for i in range(5):
+            client.post('/api/auth/register', json={
+                'username': f'testuser{i}',
+                'password': 'TestPass123',
+                'public_key': sample_public_key
+            })
+
+        login_response = client.post('/api/auth/login', json={
+            'username': 'testuser0',
+            'password': 'TestPass123'
+        })
+        access_token = login_response.get_json()['access_token']
+
+        # Test with per_page > total results
+        response = client.get('/api/auth/users/search?query=testuser&per_page=100', headers={
+            'Authorization': f'Bearer {access_token}'
+        })
+        assert response.status_code == 200
+        data = response.get_json()
+        assert len(data['users']) == 5
+        assert data['pagination']['total_pages'] == 1
+
+        # Test with page=0 (should default to 1)
+        response = client.get('/api/auth/users/search?query=testuser&page=0', headers={
+            'Authorization': f'Bearer {access_token}'
+        })
+        assert response.status_code == 200
+        data = response.get_json()
+        assert data['pagination']['page'] == 1
+
+        # Test with per_page > max (50)
+        response = client.get('/api/auth/users/search?query=testuser&per_page=100', headers={
+            'Authorization': f'Bearer {access_token}'
+        })
+        assert response.status_code == 200
+        data = response.get_json()
+        assert data['pagination']['per_page'] == 10  # Should be clamped to default
+
+        # Test with page beyond results
+        response = client.get('/api/auth/users/search?query=testuser&page=10', headers={
+            'Authorization': f'Bearer {access_token}'
+        })
+        assert response.status_code == 200
+        data = response.get_json()
+        assert len(data['users']) == 0

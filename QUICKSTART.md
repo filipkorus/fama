@@ -1,4 +1,4 @@
-# 🚀 Quick Start Guide
+# Quick Start Guide
 
 ## Szybkie uruchomienie projektu
 
@@ -55,12 +55,12 @@ docker-compose down -v
 
 ## Pierwsze kroki w aplikacji
 
-1. **Otwórz aplikację**: http://localhost:8080
-2. **Stwórz użytkownika**: Wpisz nazwę użytkownika i kliknij "Create User"
-3. **Wyślij wiadomość**: Wpisz wiadomość i kliknij "Send Message"
-4. **Testuj szyfrowanie**: 
-   - Zaznacz checkbox "Encrypt message"
-   - Lub użyj przycisku "Test Encrypt"
+1. **Otwarcie aplikacji**: http://localhost:8080
+2. **Utworzenie użytkownika**: Wprowadzenie nazwy użytkownika i kliknięcie "Create User"
+3. **Wysłanie wiadomości**: Wprowadzenie wiadomości i kliknięcie "Send Message"
+4. **Testowanie szyfrowania**:
+   - Zaznaczenie checkbox "Encrypt message"
+   - Użycie przycisku "Test Encrypt"
 
 ## Dostęp do serwisów
 
@@ -90,9 +90,9 @@ Sprawdź czy wszystkie kontenery działają:
 docker-compose ps
 ```
 
-## 🔧 Lokalne uruchomienie (Development)
+## Lokalne uruchomienie (Development)
 
-Jeśli wolisz uruchamiać backend i frontend lokalnie (szybszy development):
+Dla szybszego developmentu dostępna jest opcja lokalnego uruchomienia backendu i frontendu:
 
 ### 1. Uruchom tylko bazę danych
 
@@ -135,4 +135,4 @@ Frontend na: http://localhost:3000
 
 ## Następne kroki
 
-Przeczytaj pełną dokumentację w [README.md](README.md)
+Pełna dokumentacja dostępna w pliku [README.md](README.md).

@@ -1,8 +1,8 @@
-# 🔐 Post-Quantum Cryptography Project (Kryptografia Postkwantowa)
+# Post-Quantum Cryptography Project (Kryptografia Postkwantowa)
 
 Projekt na przedmiot Kryptografia Postkwantowa.
 
-## 📋 Spis treści
+## Spis treści
 
 - [Architektura](#architektura)
 - [Technologie](#technologie)
@@ -14,7 +14,7 @@ Projekt na przedmiot Kryptografia Postkwantowa.
 - [Funkcjonalności](#funkcjonalności)
 - [Rozwój projektu](#rozwój-projektu)
 
-## 🏗️ Architektura
+## Architektura
 
 Projekt składa się z następujących komponentów:
 
@@ -39,14 +39,14 @@ Projekt składa się z następujących komponentów:
 ```
 
 **Aktualna implementacja:**
-- ✅ Minimalistyczny WebSocket server
-- ✅ Rejestracja użytkowników
-- ✅ Routing wiadomości (broadcast i private)
-- ✅ Custom React hook do WebSocket
-- ✅ Testy jednostkowe (backend + frontend)
-- 🔨 Gotowe do rozbudowy o algorytmy kryptografii postkwantowej
+- Minimalistyczny WebSocket server
+- Rejestracja użytkowników
+- Routing wiadomości (broadcast i private)
+- Custom React hook do WebSocket
+- Testy jednostkowe (backend + frontend)
+- Gotowe do rozbudowy o algorytmy kryptografii postkwantowej
 
-## 🛠️ Technologie
+## Technologie
 
 ### Backend
 
@@ -69,13 +69,13 @@ Projekt składa się z następujących komponentów:
 - **Nginx** - Reverse proxy
 - **PostgreSQL 15** - Baza danych (gotowa do użycia, obecnie nieaktywna)
 
-## ✅ Wymagania
+## Wymagania
 
 - Docker Desktop (Windows/Mac) lub Docker Engine + Docker Compose (Linux)
 - Git
 - (Opcjonalnie) Node.js 20+ i Python 3.11+ dla lokalnego developmentu
 
-## 🚀 Instalacja i uruchomienie
+## Instalacja i uruchomienie
 
 ### 1. Klonowanie repozytorium
 
@@ -96,7 +96,7 @@ Copy-Item .env.example .env
 cp .env.example .env
 ```
 
-Edytuj plik `.env` według potrzeb (opcjonalnie).
+Plik `.env` można edytować w razie potrzeby.
 
 ### 3. Uruchomienie aplikacji
 
@@ -120,9 +120,9 @@ docker-compose down
 docker-compose down -v
 ```
 
-## ⚙️ Konfiguracja
+## Konfiguracja
 
-Wszystkie ustawienia można skonfigurować poprzez plik `.env`:
+Konfiguracja systemu odbywa się poprzez plik `.env`:
 
 ### PostgreSQL
 ```env
@@ -151,7 +151,7 @@ VITE_API_URL=http://localhost:8080  # URL backendu
 NGINX_PORT=8080                # Port reverse proxy
 ```
 
-## 🧪 Testy
+## Testy
 
 ### Szybkie uruchomienie testów
 
@@ -167,12 +167,12 @@ NGINX_PORT=8080                # Port reverse proxy
 ./test.sh
 ```
 
-Skrypty automatycznie:
+Skrypty wykonują następujące operacje:
 
-1. Przebudowują kontenery testowe (`--no-cache`)
-2. Uruchamiają testy backendu i frontendu jednocześnie
-3. Wyświetlają wyniki coverage w terminalu
-4. Czyszczą kontenery po zakończeniu
+1. Przebudowa kontenerów testowych (`--no-cache`)
+2. Uruchomienie testów backendu i frontendu
+3. Wyświetlenie wyników coverage
+4. Czyszczenie kontenerów
 
 ### Uruchamianie testów ręcznie w Dockerze
 
@@ -193,7 +193,7 @@ docker-compose -f docker-compose.test.yml down
 
 ### Testy lokalne (bez Dockera)
 
-Możesz też uruchomić testy bezpośrednio na swoim systemie:
+Testy można również uruchomić bezpośrednio na lokalnym systemie:
 
 #### Backend (Python)
 
@@ -228,7 +228,7 @@ npm run test:coverage
 npm run test:ui
 ```
 
-## 📁 Struktura projektu
+## Struktura projektu
 
 ```text
 fama/
@@ -283,149 +283,9 @@ fama/
 └── README.md                  # Ta dokumentacja
 ```
 
-## 🎯 Funkcjonalności
-
-### Aktualne (zaimplementowane)
-
-#### Backend
-
-- ✅ **WebSocket Server** - Flask-SocketIO
-- ✅ **Health Check API** - `/api/health` endpoint
-- ✅ **Rejestracja użytkowników** - event `register`
-- ✅ **Routing wiadomości**:
-  - Broadcast (do wszystkich)
-  - Private messages (do konkretnego użytkownika przez `to` parameter)
-- ✅ **Tracking połączonych użytkowników** - `connected_users` dict
-- ✅ **Testy jednostkowe** - 6 testów z pytest
-
-#### Frontend
-
-- ✅ **Custom WebSocket Hook** - `useWebSocket.ts`
-- ✅ **Dwuetapowy UI**:
-  1. Ekran rejestracji (wprowadź username)
-  2. Ekran czatu (wysyłanie wiadomości)
-- ✅ **Obsługa wiadomości** - broadcast i private
-- ✅ **Status połączenia** - real-time
-- ✅ **Testy jednostkowe** - 15 testów z Vitest
-
-### Planowane do implementacji
-
-- 🔨 **Algorytmy kryptografii postkwantowej**:
-  - Kyber (szyfrowanie)
-  - Dilithium (podpisy cyfrowe)
-  - SPHINCS+ (podpisy cyfrowe)
-- 🔨 **Zarządzanie kluczami** - generowanie, przechowywanie, wymiana
-- 🔨 **Szyfrowanie end-to-end** - szyfrowanie wiadomości przed wysłaniem
-- 🔨 **Weryfikacja podpisów** - autentykacja nadawcy
-- 🔨 **Historia wiadomości** - zapis do bazy danych
-- 🔨 **UI do zarządzania kryptografią** - panel wyboru algorytmu
-
-## 📚 API Documentation
-
-### REST API Endpoints
-
-#### Health Check
-
-```http
-GET /api/health
-```
-
-Sprawdza status backendu i liczbę połączonych użytkowników.
-
-**Response:**
-
-```json
-{
-  "status": "healthy",
-  "connected_users": 2
-}
-```
-
-### WebSocket Events (Socket.IO)
-
-#### Connect
-
-```javascript
-// Automatyczne przy połączeniu
-socket.on('connect', () => {
-  console.log('Connected to server')
-})
-```
-
-#### Disconnect
-
-```javascript
-socket.on('disconnect', () => {
-  console.log('Disconnected from server')
-})
-```
-
-#### Register User
-
-**Emit:**
-
-```javascript
-socket.emit('register', { username: 'jan_kowalski' })
-```
-
-**Receive:**
-
-```javascript
-socket.on('registered', ({ username, session_id }) => {
-  console.log(`Registered as ${username}`)
-})
-```
-
-#### Send Message (Broadcast)
-
-```javascript
-socket.emit('message', {
-  username: 'jan_kowalski',
-  message: 'Hello everyone!'
-})
-```
-
-#### Send Private Message
-
-```javascript
-socket.emit('message', {
-  username: 'jan_kowalski',
-  message: 'Private message',
-  to: 'anna_nowak'  // username odbiorcy
-})
-```
-
-#### Receive Message
-
-```javascript
-socket.on('message', (data) => {
-  // data może być stringiem lub obiektem:
-  // String: "jan_kowalski: Hello!"
-  // Object: { username: 'jan_kowalski', message: 'Hello!', to: 'you' }
-  console.log('New message:', data)
-})
-```
-
-## 🔧 Rozwój projektu
-
-### Struktura plików `.env`
-
-Projekt używa różnych plików `.env` dla różnych środowisk:
-
-| Plik | Używany przez | Kiedy używać |
-|------|---------------|--------------|
-| `/.env` | Docker Compose | Uruchamianie w Dockerze (`./start.ps1`) |
-| `/backend/.env` | Backend lokalnie | Development backendu bez Dockera |
-| `/frontend/.env.local` | Frontend lokalnie | Development frontendu bez Dockera |
-
-**Przykład:** Jeśli pracujesz nad frontendem lokalnie (`npm run dev`) i backendem w Dockerze:
-
-- Frontend użyje `/frontend/.env.local` → `VITE_API_URL=http://localhost:5000`
-- Backend w Dockerze użyje `/.env`
-
 ### Lokalne uruchomienie (development bez Dockera)
 
-Jeśli chcesz szybszy hot reload i debugowanie, możesz uruchomić tylko bazę danych w Dockerze, a backend i frontend lokalnie.
+Dla szybszego hot reload i debugowania dostępna jest opcja uruchomienia tylko bazy danych w Dockerze, przy jednoczesnym lokalnym uruchomieniu backendu i frontendu.
 
 #### 1. Uruchom bazę danych
 
@@ -472,14 +332,6 @@ npm run dev
 
 Frontend dostępny: <http://localhost:5173>
 
-**Zalety developmentu lokalnego:**
-
-- ✅ Szybszy hot reload
-- ✅ Łatwiejsze debugowanie (breakpointy, logging)
-- ✅ Bezpośredni dostęp do kodu
-- ✅ Szybsze iteracje developmentu
-- ✅ Niższe zużycie zasobów
-
 #### Zatrzymanie
 
 ```bash
@@ -489,7 +341,7 @@ docker-compose -f docker-compose.dev.yml down
 # Backend i frontend - Ctrl+C w terminalach
 ```
 
-## 📝 Przydatne komendy
+## Przydatne komendy
 
 ### Docker
 
