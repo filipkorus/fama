@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from database import db
 from werkzeug.security import generate_password_hash, check_password_hash
 
@@ -9,8 +9,8 @@ class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False, index=True)
     password_hash = db.Column(db.String(255), nullable=False)
-    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = db.Column(db.DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
+    updated_at = db.Column(db.DateTime, nullable=False, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
     def __repr__(self):
         return f'<User {self.username}>'
@@ -42,7 +42,7 @@ class RefreshToken(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     revoked = db.Column(db.Boolean, nullable=False, default=False)
     expires_at = db.Column(db.DateTime, nullable=False)
-    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
 
     user = db.relationship('User', backref=db.backref('refresh_tokens', lazy=True))
 
@@ -58,8 +58,8 @@ class UserDevice(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     device_name = db.Column(db.String(100), nullable=True)  # e.g., "iPhone 15", "Chrome Desktop"
     public_key = db.Column(db.Text, nullable=False)  # ML-KEM public key (Base64)
-    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
-    last_used_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
+    last_used_at = db.Column(db.DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
 
     user = db.relationship('User', backref=db.backref('devices', lazy=True))
 
@@ -86,9 +86,9 @@ class UserDevice(db.Model):
 
 # Association table for many-to-many relationship between Room and User
 room_participants = db.Table('room_participants',
-    db.Column('room_id', db.Integer, db.ForeignKey('rooms.id'), primary_key=True),
     db.Column('user_id', db.Integer, db.ForeignKey('users.id'), primary_key=True),
-    db.Column('joined_at', db.DateTime, nullable=False, default=datetime.utcnow)
+    db.Column('room_id', db.Integer, db.ForeignKey('rooms.id'), primary_key=True),
+    db.Column('joined_at', db.DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
 )
 
 
@@ -100,8 +100,8 @@ class Room(db.Model):
     name = db.Column(db.String(100), nullable=True)  # Optional room name
     is_group = db.Column(db.Boolean, nullable=False, default=False)  # True for group chats, False for 1-on-1
     current_key_version = db.Column(db.Integer, nullable=False, default=1)  # Current version of symmetric key
-    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = db.Column(db.DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
+    updated_at = db.Column(db.DateTime, nullable=False, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
     # Relationships
     participants = db.relationship('User', secondary=room_participants, backref=db.backref('rooms', lazy='dynamic'))
@@ -148,7 +148,7 @@ class Message(db.Model):
     key_version = db.Column(db.Integer, nullable=False, default=1)  # Version of symmetric key used
 
     # Metadata
-    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, index=True)
+    created_at = db.Column(db.DateTime, nullable=False, default=lambda: datetime.now(timezone.utc), index=True)
 
     # Relationships
     sender = db.relationship('User', backref=db.backref('sent_messages', lazy=True))
@@ -189,7 +189,7 @@ class SymmetricKey(db.Model):
     # Encrypted symmetric key (encrypted with user's ML-KEM public key)
     encrypted_key = db.Column(db.Text, nullable=False)  # Base64 encoded
 
-    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
     revoked_at = db.Column(db.DateTime, nullable=True)  # When this key version was revoked
 
     # Relationships

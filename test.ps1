@@ -11,3 +11,6 @@ docker-compose -f docker-compose.test.yml build --no-cache
 
 Write-Host "`n[*] Running all tests..." -ForegroundColor Cyan
 docker-compose -f docker-compose.test.yml up
+
+Write-Host "`n[*] Tests completed." -ForegroundColor Green
+docker-compose -f docker-compose.test.yml down
