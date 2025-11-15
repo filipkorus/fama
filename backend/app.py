@@ -4,9 +4,8 @@ from flask_jwt_extended import JWTManager, decode_token, verify_jwt_in_request
 from config import Config
 from database import db
 from models import User, Room, Message, SymmetricKey, UserDevice
-from datetime import datetime
+from datetime import datetime, timezone
 import os
-import time
 
 app = Flask(__name__)
 app.config.from_object(Config)
@@ -303,7 +302,7 @@ def handle_invite_to_room(data):
             key_version=new_version - 1
         ).all()
         for old_key in old_keys:
-            old_key.revoked_at = datetime.utcnow()
+            old_key.revoked_at = datetime.now(timezone.utc)
 
         # Store new encrypted symmetric keys for ALL participants (current + invited)
         for key_data in new_encrypted_keys:
@@ -469,7 +468,7 @@ def handle_rotate_room_key(data):
             key_version=new_version - 1
         ).all()
         for old_key in old_keys:
-            old_key.revoked_at = datetime.utcnow()
+            old_key.revoked_at = datetime.now(timezone.utc)
 
         # Store new encrypted symmetric keys for all current participants
         for key_data in new_encrypted_keys:
