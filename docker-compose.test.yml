@@ -34,8 +34,6 @@ services:
       - ./backend:/app
     command: >
       sh -c "
-        echo 'Installing dependencies...' &&
-        pip install -q -r requirements.txt &&
         echo 'Waiting for database to be ready...' &&
         sleep 2 &&
         echo 'Running backend tests...' &&

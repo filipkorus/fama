@@ -25,7 +25,7 @@ Przykład użycia:
 import base64
 import hashlib
 from typing import Tuple, Dict, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 
 
 class DigitalSignature:
@@ -230,7 +230,7 @@ class DigitalSignature:
             'hash_algorithm': hash_alg,
             'signature_algorithm': self.algorithm,
             'key_id': key_id,
-            'timestamp': datetime.utcnow().isoformat(),
+            'timestamp': datetime.now(timezone.utc).isoformat(),
             'data_hash': base64.b64encode(data_hash).decode('utf-8'),
             'metadata': metadata or {}
         }
