@@ -41,7 +41,7 @@ Wszystkie endpointy znajdują się pod prefiksem `/api/auth`.
   - Długość: 3-80 znaków
   - Dozwolone znaki: litery (a-z, A-Z), cyfry (0-9), podkreślnik (_), myślnik (-)
   - Unikalny w systemie
-  
+
 - **Password:**
   - Minimum 8 znaków
   - Walidacja siły hasła (wielkie/małe litery, cyfry) jest opcjonalna i kontrolowana przez `VALIDATE_PASSWORD_STRENGTH` w konfiguracji
@@ -216,25 +216,25 @@ api.interceptors.response.use(
   (response) => response, // Jeśli OK, zwróć odpowiedź
   async (error) => {
     const originalRequest = error.config;
-    
+
     // Jeśli błąd 401 i nie próbowaliśmy jeszcze odświeżyć tokenu
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true; // Oznacz, że próbujemy odświeżyć
-      
+
       try {
         // Wywołaj /refresh aby dostać nowy access token
         const response = await axios.post('/api/auth/refresh', {}, {
           withCredentials: true
         });
-        
+
         const newAccessToken = response.data.access_token;
-        
+
         // Zaktualizuj token w localStorage
         localStorage.setItem('access_token', newAccessToken);
-        
+
         // Zaktualizuj nagłówek w oryginalnym zapytaniu
         originalRequest.headers['Authorization'] = `Bearer ${newAccessToken}`;
-        
+
         // Ponów oryginalne zapytanie z nowym tokenem
         return api(originalRequest);
       } catch (refreshError) {
@@ -244,7 +244,7 @@ api.interceptors.response.use(
         return Promise.reject(refreshError);
       }
     }
-    
+
     return Promise.reject(error);
   }
 );
@@ -293,7 +293,7 @@ const logout = async () => {
   await axios.post('/api/auth/logout', {}, {
     withCredentials: true // Wysyła HTTP-only cookie z refresh tokenem
   });
-  
+
   localStorage.removeItem('access_token');
   window.location.href = '/login';
 };
@@ -337,13 +337,13 @@ import axios from 'axios';
 
 const getCurrentUser = async () => {
   const accessToken = localStorage.getItem('access_token');
-  
+
   const response = await axios.get('/api/auth/me', {
     headers: {
       Authorization: `Bearer ${accessToken}`
     }
   });
-  
+
   return response.data.user;
 };
 ```
@@ -363,7 +363,7 @@ System wykorzystuje dwa rodzaje tokenów JWT:
 
 - **Czas życia:** 30 dni (domyślnie)
 - **Przeznaczenie:** Generowanie nowych access tokenów
-- **Przechowywanie:** 
+- **Przechowywanie:**
   - Zapisywany w HTTP-only cookie po stronie klienta
   - Zapisywany w bazie danych z możliwością unieważnienia
 - **Użycie:** Automatycznie wysyłany jako cookie do `/api/auth/refresh` aby otrzymać nowy access token
@@ -539,7 +539,7 @@ async function refreshAccessToken() {
     method: 'POST',
     credentials: 'include' // Ważne! Wysyła HTTP-only cookie z refresh tokenem
   });
-  
+
   if (response.ok) {
     const data = await response.json();
     localStorage.setItem('access_token', data.access_token);
@@ -561,12 +561,269 @@ async function logout() {
     method: 'POST',
     credentials: 'include' // Ważne! Wysyła HTTP-only cookie z refresh tokenem
   });
-  
+
   // Usuń access token
   localStorage.removeItem('access_token');
-  
+
   // Przekieruj do strony logowania
   window.location.href = '/login';
+}
+```
+
+---
+
+## Pobieranie kluczy publicznych użytkowników
+
+### 6. Wyszukiwanie użytkowników
+
+**Endpoint:** `GET /api/auth/users/search?query=<username>&page=<page>&per_page=<per_page>`
+
+**Opis:** Wyszukuje użytkowników po username i zwraca ich podstawowe informacje wraz z kluczami publicznymi wszystkich urządzeń. Przydatne do zapraszania użytkowników do pokoi. Wspiera paginację.
+
+**Headers:**
+```
+Authorization: Bearer <access_token>
+```
+
+**Query Parameters:**
+- `query` (wymagane): Fragment username do wyszukania (minimum 2 znaki)
+- `page` (opcjonalne): Numer strony (domyślnie 1)
+- `per_page` (opcjonalne): Liczba wyników na stronę (domyślnie 10, max 50)
+
+**Odpowiedź sukcesu (200):**
+
+```json
+{
+  "users": [
+    {
+      "user_id": 5,
+      "username": "alice",
+      "devices": [
+        {
+          "device_id": 12,
+          "public_key": "OwOc0pQrXx..."
+        },
+        {
+          "device_id": 13,
+          "public_key": "BwXz1mNsYy..."
+        }
+      ]
+    },
+    {
+      "user_id": 8,
+      "username": "alice123",
+      "devices": [
+        {
+          "device_id": 20,
+          "public_key": "CxYa2nOtZz..."
+        }
+      ]
+    }
+  ],
+  "pagination": {
+    "page": 1,
+    "per_page": 10,
+    "total_count": 2,
+    "total_pages": 1,
+    "has_next": false,
+    "has_prev": false
+  }
+}
+```
+
+**Błędy:**
+- `400` - Brak parametru query lub query za krótkie (< 2 znaki)
+- `401` - Nieprawidłowy lub brakujący access token
+- `500` - Błąd serwera
+
+**Przykład użycia z paginacją:**
+
+```javascript
+async function searchUsers(query, page = 1, perPage = 20) {
+  const accessToken = localStorage.getItem('access_token');
+
+  const response = await fetch(
+    `/api/auth/users/search?query=${encodeURIComponent(query)}&page=${page}&per_page=${perPage}`,
+    {
+      headers: {
+        'Authorization': `Bearer ${accessToken}`
+      }
+    }
+  );
+
+  if (response.ok) {
+    return await response.json();
+  } else {
+    throw new Error('Failed to search users');
+  }
+}
+
+// Użycie
+const result = await searchUsers('alice', 1, 20);
+console.log(`Found ${result.pagination.total_count} users`);
+console.log(`Page ${result.pagination.page} of ${result.pagination.total_pages}`);
+
+// Iteracja przez wszystkie strony
+let allUsers = [];
+let currentPage = 1;
+do {
+  const result = await searchUsers('alice', currentPage);
+  allUsers = allUsers.concat(result.users);
+  if (!result.pagination.has_next) break;
+  currentPage++;
+} while (true);
+```
+
+### 7. Pobieranie kluczy publicznych użytkownika po ID
+
+**Endpoint:** `GET /api/auth/users/<user_id>/public-keys`
+
+**Opis:** Pobiera wszystkie urządzenia i klucze publiczne konkretnego użytkownika po jego ID.
+
+**Headers:**
+```
+Authorization: Bearer <access_token>
+```
+
+**Path Parameters:**
+- `user_id`: ID użytkownika (integer)
+
+**Odpowiedź sukcesu (200):**
+
+```json
+{
+  "user_id": 5,
+  "username": "alice",
+  "devices": [
+    {
+      "device_id": 12,
+      "public_key": "OwOc0pQrXx..."
+    },
+    {
+      "device_id": 13,
+      "public_key": "BwXz1mNsYy..."
+    }
+  ]
+}
+```
+
+**Błędy:**
+- `401` - Nieprawidłowy lub brakujący access token
+- `404` - Użytkownik o podanym ID nie istnieje
+- `500` - Błąd serwera
+
+**Przykład użycia:**
+
+```javascript
+async function getUserPublicKeys(userId) {
+  const accessToken = localStorage.getItem('access_token');
+
+  const response = await fetch(
+    `/api/auth/users/${userId}/public-keys`,
+    {
+      headers: {
+        'Authorization': `Bearer ${accessToken}`
+      }
+    }
+  );
+
+  if (response.ok) {
+    return await response.json();
+  } else if (response.status === 404) {
+    throw new Error('User not found');
+  } else {
+    throw new Error('Failed to get public keys');
+  }
+}
+
+// Użycie
+const userData = await getUserPublicKeys(5);
+console.log(`User ${userData.username} has ${userData.devices.length} devices`);
+```
+
+### 8. Pobieranie kluczy publicznych użytkownika po username
+
+**Endpoint:** `GET /api/auth/users/<username>/public-keys`
+
+**Opis:** Pobiera wszystkie urządzenia i klucze publiczne konkretnego użytkownika po jego username. Alternatywa do pobierania po ID.
+
+**Headers:**
+```
+Authorization: Bearer <access_token>
+```
+
+**Path Parameters:**
+- `username`: Nazwa użytkownika (string)
+
+**Odpowiedź sukcesu (200):**
+
+```json
+{
+  "user_id": 5,
+  "username": "alice",
+  "devices": [
+    {
+      "device_id": 12,
+      "public_key": "OwOc0pQrXx..."
+    }
+  ]
+}
+```
+
+**Błędy:**
+- `401` - Nieprawidłowy lub brakujący access token
+- `404` - Użytkownik o podanym username nie istnieje
+- `500` - Błąd serwera
+
+**Przykład użycia:**
+
+```javascript
+async function getUserPublicKeysByUsername(username) {
+  const accessToken = localStorage.getItem('access_token');
+
+  const response = await fetch(
+    `/api/auth/users/${encodeURIComponent(username)}/public-keys`,
+    {
+      headers: {
+        'Authorization': `Bearer ${accessToken}`
+      }
+    }
+  );
+
+  if (response.ok) {
+    return await response.json();
+  } else if (response.status === 404) {
+    throw new Error('User not found');
+  } else {
+    throw new Error('Failed to get public keys');
+  }
+}
+
+// Użycie przy zapraszaniu do pokoju
+async function inviteUserToRoom(roomId, username) {
+  // 1. Pobierz klucze publiczne użytkownika
+  const userData = await getUserPublicKeysByUsername(username);
+
+  // 2. Wygeneruj nowy klucz symetryczny
+  const newSymmetricKey = generateAES256Key();
+
+  // 3. Zaszyfruj klucz dla wszystkich urządzeń użytkownika
+  const encryptedKeys = [];
+  for (const device of userData.devices) {
+    const encrypted = await mlKemEncrypt(device.public_key, newSymmetricKey);
+    encryptedKeys.push({
+      user_id: userData.user_id,
+      device_id: device.device_id,
+      encrypted_key: btoa(encrypted)
+    });
+  }
+
+  // 4. Wyślij zaproszenie przez WebSocket
+  socket.emit('invite_to_room', {
+    room_id: roomId,
+    invited_user_ids: [userData.user_id],
+    new_encrypted_keys: encryptedKeys
+  });
 }
 ```
 
@@ -589,18 +846,18 @@ async function logout() {
 ```javascript
 async function makeAuthenticatedRequest(url) {
   let accessToken = localStorage.getItem('access_token');
-  
+
   let response = await fetch(url, {
     headers: {
       'Authorization': `Bearer ${accessToken}`
     },
     credentials: 'include' // Ważne dla odświeżania tokenu
   });
-  
+
   // Jeśli access token wygasł, spróbuj odświeżyć
   if (response.status === 401) {
     accessToken = await refreshAccessToken();
-    
+
     if (accessToken) {
       // Ponów zapytanie z nowym tokenem
       response = await fetch(url, {
@@ -611,7 +868,7 @@ async function makeAuthenticatedRequest(url) {
       });
     }
   }
-  
+
   return response;
 }
 ```

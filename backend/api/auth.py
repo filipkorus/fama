@@ -460,3 +460,151 @@ def get_current_user():
 
     except Exception as e:
         return jsonify({'error': f'Server error: {str(e)}'}), 500
+
+
+@auth_bp.route('/users/search', methods=['GET'])
+@jwt_required()
+def search_users():
+    """
+    Search for users by username with pagination
+
+    Headers:
+        Authorization: Bearer <access_token>
+
+    Query Parameters:
+        query: Username search query (required, min 2 characters)
+        page: Page number (optional, default 1)
+        per_page: Results per page (optional, default 10, max 50)
+
+    Returns:
+        200: List of users matching search query with pagination metadata
+        400: Invalid query parameters
+        401: Invalid access token
+        500: Internal server error
+    """
+    try:
+        query = request.args.get('query', '').strip()
+        page = request.args.get('page', 1, type=int)
+        per_page = request.args.get('per_page', 10, type=int)
+
+        if not query:
+            return jsonify({'error': 'Query parameter is required'}), 400
+
+        if len(query) < 2:
+            return jsonify({'error': 'Query must be at least 2 characters long'}), 400
+
+        if page < 1:
+            page = 1
+
+        if per_page < 1 or per_page > 50:
+            per_page = 10
+
+        # Search for users by username (case-insensitive partial match)
+        users_query = User.query.filter(
+            User.username.ilike(f'%{query}%')
+        )
+
+        # Get total count for pagination
+        total_count = users_query.count()
+        total_pages = (total_count + per_page - 1) // per_page  # Ceiling division
+
+        # Apply pagination
+        users = users_query.offset((page - 1) * per_page).limit(per_page).all()
+
+        # Get public keys for each user (minimal info only)
+        results = []
+        for user in users:
+            devices = UserDevice.query.filter_by(user_id=user.id).all()
+            user_data = {
+                'user_id': user.id,
+                'username': user.username,
+                'devices': [device.to_dict_minimal() for device in devices]
+            }
+            results.append(user_data)
+
+        return jsonify({
+            'users': results,
+            'pagination': {
+                'page': page,
+                'per_page': per_page,
+                'total_count': total_count,
+                'total_pages': total_pages,
+                'has_next': page < total_pages,
+                'has_prev': page > 1
+            }
+        }), 200
+
+    except Exception as e:
+        return jsonify({'error': f'Server error: {str(e)}'}), 500
+
+
+@auth_bp.route('/users/<int:user_id>/public-keys', methods=['GET'])
+@jwt_required()
+def get_user_public_keys(user_id):
+    """
+    Get all public keys (devices) for a specific user
+
+    Headers:
+        Authorization: Bearer <access_token>
+
+    Path Parameters:
+        user_id: User ID (integer)
+
+    Returns:
+        200: List of user's devices with public keys
+        401: Invalid access token
+        404: User not found
+        500: Internal server error
+    """
+    try:
+        user = db.session.get(User, user_id)
+
+        if not user:
+            return jsonify({'error': 'User not found'}), 404
+
+        devices = UserDevice.query.filter_by(user_id=user_id).all()
+
+        return jsonify({
+            'user_id': user.id,
+            'username': user.username,
+            'devices': [device.to_dict_minimal() for device in devices]
+        }), 200
+
+    except Exception as e:
+        return jsonify({'error': f'Server error: {str(e)}'}), 500
+
+
+@auth_bp.route('/users/<username>/public-keys', methods=['GET'])
+@jwt_required()
+def get_user_public_keys_by_username(username):
+    """
+    Get all public keys (devices) for a specific user by username
+
+    Headers:
+        Authorization: Bearer <access_token>
+
+    Path Parameters:
+        username: Username (string)
+
+    Returns:
+        200: List of user's devices with public keys
+        401: Invalid access token
+        404: User not found
+        500: Internal server error
+    """
+    try:
+        user = User.query.filter_by(username=username).first()
+
+        if not user:
+            return jsonify({'error': 'User not found'}), 404
+
+        devices = UserDevice.query.filter_by(user_id=user.id).all()
+
+        return jsonify({
+            'user_id': user.id,
+            'username': user.username,
+            'devices': [device.to_dict_minimal() for device in devices]
+        }), 200
+
+    except Exception as e:
+        return jsonify({'error': f'Server error: {str(e)}'}), 500
