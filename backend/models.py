@@ -9,6 +9,7 @@ class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False, index=True)
     password_hash = db.Column(db.String(255), nullable=False)
+    public_key = db.Column(db.Text, nullable=False)  # ML-KEM public key (Base64)
     created_at = db.Column(db.DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
     updated_at = db.Column(db.DateTime, nullable=False, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
@@ -28,6 +29,7 @@ class User(db.Model):
         return {
             'id': self.id,
             'username': self.username,
+            'public_key': self.public_key,
             'created_at': self.created_at.isoformat(),
             'updated_at': self.updated_at.isoformat()
         }
@@ -50,40 +52,6 @@ class RefreshToken(db.Model):
         return f'<RefreshToken {self.jti}>'
 
 
-class UserDevice(db.Model):
-    """Model for storing user devices with their ML-KEM public keys"""
-    __tablename__ = 'user_devices'
-
-    id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    device_name = db.Column(db.String(100), nullable=True)  # e.g., "iPhone 15", "Chrome Desktop"
-    public_key = db.Column(db.Text, nullable=False)  # ML-KEM public key (Base64)
-    created_at = db.Column(db.DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
-    last_used_at = db.Column(db.DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
-
-    user = db.relationship('User', backref=db.backref('devices', lazy=True))
-
-    def __repr__(self):
-        return f'<UserDevice {self.device_name or "Unnamed"} for user_id={self.user_id}>'
-
-    def to_dict(self):
-        """Convert device object to dictionary"""
-        return {
-            'id': self.id,
-            'device_name': self.device_name,
-            'public_key': self.public_key,
-            'created_at': self.created_at.isoformat(),
-            'last_used_at': self.last_used_at.isoformat()
-        }
-
-    def to_dict_minimal(self):
-        """Convert device to dictionary with minimal info (for public key queries)"""
-        return {
-            'device_id': self.id,
-            'public_key': self.public_key
-        }
-
-
 # Association table for many-to-many relationship between Room and User
 room_participants = db.Table('room_participants',
     db.Column('user_id', db.Integer, db.ForeignKey('users.id'), primary_key=True),
@@ -100,6 +68,7 @@ class Room(db.Model):
     name = db.Column(db.String(100), nullable=True)  # Optional room name
     is_group = db.Column(db.Boolean, nullable=False, default=False)  # True for group chats, False for 1-on-1
     current_key_version = db.Column(db.Integer, nullable=False, default=1)  # Current version of symmetric key
+    rotation_pending = db.Column(db.Boolean, nullable=False, default=False)  # Flag set when rotation is required
     created_at = db.Column(db.DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
     updated_at = db.Column(db.DateTime, nullable=False, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
@@ -183,7 +152,6 @@ class SymmetricKey(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     room_id = db.Column(db.Integer, db.ForeignKey('rooms.id'), nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    device_id = db.Column(db.Integer, db.ForeignKey('user_devices.id'), nullable=False)
     key_version = db.Column(db.Integer, nullable=False, default=1)  # Version of the symmetric key
 
     # Encrypted symmetric key (encrypted with user's ML-KEM public key)
@@ -195,15 +163,14 @@ class SymmetricKey(db.Model):
     # Relationships
     room = db.relationship('Room', backref=db.backref('symmetric_keys', lazy=True))
     user = db.relationship('User', backref=db.backref('symmetric_keys', lazy=True))
-    device = db.relationship('UserDevice', backref=db.backref('symmetric_keys', lazy=True))
 
-    # Unique constraint: one encrypted key per room-user-device-version combination
+    # Unique constraint: one encrypted key per room-user-version combination
     __table_args__ = (
-        db.UniqueConstraint('room_id', 'user_id', 'device_id', 'key_version', name='_room_user_device_version_uc'),
+        db.UniqueConstraint('room_id', 'user_id', 'key_version', name='_room_user_version_uc'),
     )
 
     def __repr__(self):
-        return f'<SymmetricKey room={self.room_id} user={self.user_id} device={self.device_id} v={self.key_version}>'
+        return f'<SymmetricKey room={self.room_id} user={self.user_id} v={self.key_version}>'
 
     def to_dict(self):
         """Convert symmetric key object to dictionary"""
@@ -211,10 +178,8 @@ class SymmetricKey(db.Model):
             'id': self.id,
             'room_id': self.room_id,
             'user_id': self.user_id,
-            'device_id': self.device_id,
             'key_version': self.key_version,
             'encrypted_key': self.encrypted_key,
             'created_at': self.created_at.isoformat(),
             'revoked_at': self.revoked_at.isoformat() if self.revoked_at else None
         }
-

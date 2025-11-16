@@ -1,6 +1,6 @@
 """
 Authentication API endpoints
-Provides user registration and login functionality with JWT tokens
+Handles user registration, login, logout, and token refresh
 """
 
 from flask import Blueprint, request, jsonify, current_app, make_response
@@ -9,122 +9,14 @@ from flask_jwt_extended import (
     create_refresh_token,
     jwt_required,
     get_jwt_identity,
-    get_jwt
+    decode_token
 )
 from datetime import datetime, timedelta
 from database import db
-from models import User, RefreshToken, UserDevice
-import re
-import base64
-from user_agents import parse
+from models import User, RefreshToken
+from utils import validate_username, validate_password, validate_public_key
 
 auth_bp = Blueprint('auth', __name__, url_prefix='/api/auth')
-
-
-def generate_device_name_from_user_agent(user_agent_string):
-    """
-    Generate a device name from User-Agent string
-    Examples: "Chrome 120 on Windows 10", "Safari 17 on iPhone", "Firefox 119 on Ubuntu"
-    """
-    if not user_agent_string:
-        return "Unknown Device"
-
-    try:
-        user_agent = parse(user_agent_string)
-
-        # Browser info
-        browser = f"{user_agent.browser.family} {user_agent.browser.version_string.split('.')[0]}" if user_agent.browser.family else "Unknown Browser"
-
-        # OS info
-        os_name = user_agent.os.family if user_agent.os.family else "Unknown OS"
-        os_version = user_agent.os.version_string.split('.')[0] if user_agent.os.version_string else ""
-
-        # Device type (mobile, tablet, pc)
-        if user_agent.is_mobile:
-            device_type = user_agent.device.family if user_agent.device.family != "Other" else "Mobile"
-        elif user_agent.is_tablet:
-            device_type = "Tablet"
-        else:
-            device_type = ""
-
-        # Construct name
-        if device_type and device_type not in os_name:
-            if os_version:
-                return f"{browser} on {device_type} ({os_name} {os_version})"
-            return f"{browser} on {device_type} ({os_name})"
-        else:
-            if os_version:
-                return f"{browser} on {os_name} {os_version}"
-            return f"{browser} on {os_name}"
-    except Exception:
-        return "Unknown Device"
-
-
-def validate_username(username):
-    """
-    Validate username format
-    - Length: 3-80 characters
-    - Allowed: letters, numbers, underscore, hyphen
-    """
-    if not username or len(username) < 3 or len(username) > 80:
-        return False, "Username must be between 3 and 80 characters"
-
-    if not re.match(r'^[a-zA-Z0-9_-]+$', username):
-        return False, "Username can only contain letters, numbers, _ and -"
-
-    return True, ""
-
-
-def validate_password(password, validate_strength=None):
-    """
-    Validate password
-    - Minimum 8 characters (always)
-    - If validate_strength=True:
-      - At least one uppercase letter
-      - At least one lowercase letter
-      - At least one digit
-    """
-    if validate_strength is None:
-        validate_strength = current_app.config.get('VALIDATE_PASSWORD_STRENGTH', False)
-
-    if not password or len(password) < 8:
-        return False, "Password must be at least 8 characters long"
-
-    if validate_strength:
-        if not re.search(r'[A-Z]', password):
-            return False, "Password must contain at least one uppercase letter"
-
-        if not re.search(r'[a-z]', password):
-            return False, "Password must contain at least one lowercase letter"
-
-        if not re.search(r'\d', password):
-            return False, "Password must contain at least one digit"
-
-    return True, ""
-
-
-def validate_public_key(public_key):
-    """
-    Validate ML-KEM public key format
-    - Must be valid Base64 string
-    - Expected sizes: ~800 bytes (Kyber512), ~1184 bytes (Kyber768), ~1568 bytes (Kyber1024)
-    """
-    if not public_key or not isinstance(public_key, str):
-        return False, "Public key is required and must be a string"
-
-    try:
-        decoded = base64.b64decode(public_key)
-        key_size = len(decoded)
-
-        # Valid ML-KEM public key sizes
-        valid_sizes = [800, 1184, 1568]  # Kyber512, Kyber768, Kyber1024
-
-        if key_size not in valid_sizes:
-            return False, f"Invalid public key size: {key_size} bytes. Expected: {valid_sizes}"
-
-        return True, ""
-    except Exception as e:
-        return False, f"Invalid Base64 format: {str(e)}"
 
 
 @auth_bp.route('/register', methods=['POST'])
@@ -136,8 +28,7 @@ def register():
         {
             "username": "string",
             "password": "string",
-            "public_key": "string (Base64-encoded ML-KEM public key)",
-            "device_name": "string (optional, e.g., 'iPhone 15', 'Chrome Desktop')"
+            "public_key": "string (Base64-encoded ML-KEM public key)"
         }
 
     Returns:
@@ -154,12 +45,6 @@ def register():
         username = data.get('username', '').strip()
         password = data.get('password', '')
         public_key = data.get('public_key', '').strip()
-        device_name = data.get('device_name', '').strip()
-
-        # Generate device name from User-Agent if not provided
-        if not device_name:
-            user_agent = request.headers.get('User-Agent', '')
-            device_name = generate_device_name_from_user_agent(user_agent)
 
         # Validate username
         valid, error = validate_username(username)
@@ -181,20 +66,11 @@ def register():
         if existing_user:
             return jsonify({'error': 'Username already exists'}), 400
 
-        # Create new user
-        user = User(username=username)
+        # Create new user with public key
+        user = User(username=username, public_key=public_key)
         user.set_password(password)
 
         db.session.add(user)
-        db.session.flush()  # Get user.id before commit
-
-        # Create device record with public key
-        device = UserDevice(
-            user_id=user.id,
-            device_name=device_name,
-            public_key=public_key
-        )
-        db.session.add(device)
         db.session.commit()
 
         # Create tokens
@@ -202,7 +78,6 @@ def register():
         refresh_token = create_refresh_token(identity=str(user.id))
 
         # Store refresh token
-        from flask_jwt_extended import decode_token
         decoded_token = decode_token(refresh_token)
 
         token_record = RefreshToken(
@@ -217,7 +92,6 @@ def register():
         response_data = {
             'message': 'User registered successfully',
             'user': user.to_dict(),
-            'device': device.to_dict(),
             'access_token': access_token
         }
 
@@ -233,7 +107,7 @@ def register():
             'refresh_token',
             value=refresh_token,
             httponly=True,
-            secure=current_app.config.get('JWT_COOKIE_SECURE', False),  # Set to True in production with HTTPS
+            secure=current_app.config.get('JWT_COOKIE_SECURE', False),
             samesite='Lax',
             max_age=max_age
         )
@@ -257,7 +131,7 @@ def login():
         }
 
     Returns:
-        200: Login successful with access and refresh tokens
+        200: Login successful with access token, refresh token
         400: Invalid input
         401: Invalid credentials
         500: Internal server error
@@ -285,7 +159,6 @@ def login():
         refresh_token = create_refresh_token(identity=str(user.id))
 
         # Store refresh token
-        from flask_jwt_extended import decode_token
         decoded_token = decode_token(refresh_token)
 
         token_record = RefreshToken(
@@ -315,7 +188,7 @@ def login():
             'refresh_token',
             value=refresh_token,
             httponly=True,
-            secure=current_app.config.get('JWT_COOKIE_SECURE', False),  # Set to True in production with HTTPS
+            secure=current_app.config.get('JWT_COOKIE_SECURE', False),
             samesite='Lax',
             max_age=max_age
         )
@@ -348,7 +221,6 @@ def refresh():
             return jsonify({'error': 'Refresh token not found'}), 401
 
         # Verify and decode the refresh token
-        from flask_jwt_extended import decode_token
         try:
             decoded_token = decode_token(refresh_token)
         except Exception as e:
@@ -397,7 +269,6 @@ def logout():
 
         if refresh_token:
             # Decode and revoke the token
-            from flask_jwt_extended import decode_token
             try:
                 decoded_token = decode_token(refresh_token)
                 jti = decoded_token['jti']
@@ -456,154 +327,6 @@ def get_current_user():
 
         return jsonify({
             'user': user.to_dict()
-        }), 200
-
-    except Exception as e:
-        return jsonify({'error': f'Server error: {str(e)}'}), 500
-
-
-@auth_bp.route('/users/search', methods=['GET'])
-@jwt_required()
-def search_users():
-    """
-    Search for users by username with pagination
-
-    Headers:
-        Authorization: Bearer <access_token>
-
-    Query Parameters:
-        query: Username search query (required, min 2 characters)
-        page: Page number (optional, default 1)
-        per_page: Results per page (optional, default 10, max 50)
-
-    Returns:
-        200: List of users matching search query with pagination metadata
-        400: Invalid query parameters
-        401: Invalid access token
-        500: Internal server error
-    """
-    try:
-        query = request.args.get('query', '').strip()
-        page = request.args.get('page', 1, type=int)
-        per_page = request.args.get('per_page', 10, type=int)
-
-        if not query:
-            return jsonify({'error': 'Query parameter is required'}), 400
-
-        if len(query) < 2:
-            return jsonify({'error': 'Query must be at least 2 characters long'}), 400
-
-        if page < 1:
-            page = 1
-
-        if per_page < 1 or per_page > 50:
-            per_page = 10
-
-        # Search for users by username (case-insensitive partial match)
-        users_query = User.query.filter(
-            User.username.ilike(f'%{query}%')
-        )
-
-        # Get total count for pagination
-        total_count = users_query.count()
-        total_pages = (total_count + per_page - 1) // per_page  # Ceiling division
-
-        # Apply pagination
-        users = users_query.offset((page - 1) * per_page).limit(per_page).all()
-
-        # Get public keys for each user (minimal info only)
-        results = []
-        for user in users:
-            devices = UserDevice.query.filter_by(user_id=user.id).all()
-            user_data = {
-                'user_id': user.id,
-                'username': user.username,
-                'devices': [device.to_dict_minimal() for device in devices]
-            }
-            results.append(user_data)
-
-        return jsonify({
-            'users': results,
-            'pagination': {
-                'page': page,
-                'per_page': per_page,
-                'total_count': total_count,
-                'total_pages': total_pages,
-                'has_next': page < total_pages,
-                'has_prev': page > 1
-            }
-        }), 200
-
-    except Exception as e:
-        return jsonify({'error': f'Server error: {str(e)}'}), 500
-
-
-@auth_bp.route('/users/<int:user_id>/public-keys', methods=['GET'])
-@jwt_required()
-def get_user_public_keys(user_id):
-    """
-    Get all public keys (devices) for a specific user
-
-    Headers:
-        Authorization: Bearer <access_token>
-
-    Path Parameters:
-        user_id: User ID (integer)
-
-    Returns:
-        200: List of user's devices with public keys
-        401: Invalid access token
-        404: User not found
-        500: Internal server error
-    """
-    try:
-        user = db.session.get(User, user_id)
-
-        if not user:
-            return jsonify({'error': 'User not found'}), 404
-
-        devices = UserDevice.query.filter_by(user_id=user_id).all()
-
-        return jsonify({
-            'user_id': user.id,
-            'username': user.username,
-            'devices': [device.to_dict_minimal() for device in devices]
-        }), 200
-
-    except Exception as e:
-        return jsonify({'error': f'Server error: {str(e)}'}), 500
-
-
-@auth_bp.route('/users/<username>/public-keys', methods=['GET'])
-@jwt_required()
-def get_user_public_keys_by_username(username):
-    """
-    Get all public keys (devices) for a specific user by username
-
-    Headers:
-        Authorization: Bearer <access_token>
-
-    Path Parameters:
-        username: Username (string)
-
-    Returns:
-        200: List of user's devices with public keys
-        401: Invalid access token
-        404: User not found
-        500: Internal server error
-    """
-    try:
-        user = User.query.filter_by(username=username).first()
-
-        if not user:
-            return jsonify({'error': 'User not found'}), 404
-
-        devices = UserDevice.query.filter_by(user_id=user.id).all()
-
-        return jsonify({
-            'user_id': user.id,
-            'username': user.username,
-            'devices': [device.to_dict_minimal() for device in devices]
         }), 200
 
     except Exception as e:

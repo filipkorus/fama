@@ -28,6 +28,9 @@ class Config:
     # CORS configuration
     CORS_ORIGINS = os.getenv('CORS_ORIGINS', '*')
 
+    # Server configuration
+    BACKEND_PORT = int(os.getenv('BACKEND_PORT', 5000))
+
     # Application settings
     DEBUG = os.getenv('FLASK_DEBUG', 'False') == 'True'
     TESTING = os.getenv('FLASK_TESTING', 'False') == 'True'
