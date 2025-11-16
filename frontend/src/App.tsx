@@ -2,7 +2,6 @@ import { useState } from 'react'
 import './App.css'
 import { useWebSocket } from './hooks/useWebSocket'
 import Chat from './components/Chat'
-import ContactList from './components/ContactList'
 import { Box } from '@mui/material'
 import { BrowserRouter as Router, Routes, Route, useNavigate } from 'react-router-dom'
 
