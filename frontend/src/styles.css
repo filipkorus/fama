@@ -1,0 +1,460 @@
+:root {
+    --bg: #0a0a0f;
+    --panel: #101018;
+    --card: #131323;
+    --text: #e8e8ff;
+    --muted: #a7a7c7;
+    --accent: #ff00ff;
+    /* neon fiolet */
+    --accent-2: #ff00ff;
+    /* róż do gradientu */
+    --ring: 0 0 32px 2px rgba(179, 101, 255, .18);
+}
+
+* {
+    box-sizing: border-box
+}
+
+html,
+body,
+#root {
+    height: 100%
+}
+
+body {
+    margin: 0;
+    background: radial-gradient(1200px 600px at 50% -20%, rgba(255, 0, 255, .09), transparent 70%), radial-gradient(800px 400px at 90% 10%, rgba(255, 0, 255, .07), transparent 60%), var(--bg);
+    color: var(--text);
+    font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", "Liberation Sans", sans-serif;
+    letter-spacing: .1px;
+}
+
+.page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* top bar */
+.topbar {
+    height: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 16px;
+    max-width: 960px;   
+    margin: 0 auto;
+    width: 100%;
+    border-bottom: #e8e8ff22 1px solid;
+}
+
+.brand {
+    font-size: 20px;
+    opacity: .9;
+}
+
+.brand-accent {
+    color: var(--accent);
+    font-weight: 700;
+    margin-right: 6px
+}
+
+.brand-sub {
+    color: #bbb
+}
+
+/* półprzezroczysty „Connected” z lekkim blurrem */
+.status {
+    display: inline-flex;
+    gap: 8px;
+    align-items: center;
+    font-size: 12px;
+    color: #adffdd;
+    background: rgba(15, 28, 24, .55);
+    /* półprzezroczyste tło */
+    backdrop-filter: blur(6px);
+    /* delikatny blur szkła */
+    padding: 6px 10px;
+    border-radius: 999px;
+    border: 1px solid rgba(173, 255, 221, .25);
+}
+
+.status.disconnected {
+    background: rgba(42, 16, 16, .55);
+    border-color: rgba(255, 100, 100, .30);
+    color: #ffcccc;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: #6dffb5;
+  box-shadow: 0 0 10px rgba(109, 255, 181, 0.8);
+}
+.status.disconnected .dot {
+  background: #ff6b6b;
+  box-shadow: 0 0 10px rgba(255, 107, 107, 0.8);
+}
+
+
+/* hero */
+.hero {
+    max-width: 960px;
+    margin: 8vh auto 0;
+    text-align: center;
+    padding: 0 16px 64px;
+}
+
+.title {
+    font-size: 40px;
+    letter-spacing: .3px;
+    margin: 8px 0 6px;
+    background: linear-gradient(90deg, var(--accent), var(--accent-2));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    text-shadow: 0 0 22px rgba(179, 101, 255, .35);
+}
+
+.subtitle {
+    max-width: 720px;
+    margin: 0 auto 22px;
+    color: var(--muted);
+    line-height: 1.6;
+}
+
+/* buttons */
+.cta-row {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    margin: 14px 0 34px
+}
+
+.btn {
+    padding: 10px 18px;
+    border-radius: 12px;
+    border: 1px solid transparent;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 14px;
+    transition: transform .08s ease, box-shadow .2s ease, background .2s ease, border .2s ease;
+}
+
+.btn.primary {
+    background: linear-gradient(90deg, var(--accent), var(--accent-2));
+    color: white;
+    box-shadow: var(--ring);
+}
+
+.btn.primary:hover {
+    transform: translateY(-1px)
+}
+
+.btn.ghost {
+    background: transparent;
+    color: var(--text);
+    border-color: rgba(179, 101, 255, .35);
+}
+
+.btn.ghost:hover {
+    border-color: rgba(179, 101, 255, .7);
+    box-shadow: var(--ring)
+}
+
+/* features */
+.features {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 16px;
+    margin-top: 4px;
+}
+
+.card {
+    background: linear-gradient(180deg, rgba(0, 0, 0, 0.08), transparent 30%), var(--card);
+    border: 1px solid rgba(179, 101, 255, .18);
+    border-radius: 16px;
+    padding: 18px;
+    text-align: left;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, .35);
+}
+
+.card h3 {
+    margin: 8px 0 10px;
+    font-size: 16px;
+    text-align: center;
+    color: #ff00ff;
+}
+
+.card p {
+    margin: 0;
+    color: var(--muted);
+    font-size: 14px;
+    line-height: 1.6;
+    text-align: center;
+}
+
+/* auth pages */
+.auth-wrap {
+    min-height: 100dvh;
+    display: grid;
+    place-items: center;
+    padding: 24px;
+}
+
+.auth-card {
+    width: 100%;
+    max-width: 420px;
+    background: var(--panel);
+    border: 1px solid rgba(179, 101, 255, .18);
+    border-radius: 18px;
+    padding: 24px 22px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, .45);
+}
+
+.auth-card h2 {
+    margin: 0 0 14px
+}
+
+.form {
+    display: grid;
+    gap: 12px;
+    margin: 12px 0 10px
+}
+
+label {
+    display: grid;
+    gap: 6px;
+    font-size: 14px
+}
+
+input {
+    background: #0c0c16;
+    border: 1px solid rgba(179, 101, 255, .22);
+    color: var(--text);
+    padding: 10px 12px;
+    border-radius: 10px;
+    outline: none;
+}
+
+input:focus {
+    border-color: var(--accent);
+    box-shadow: var(--ring)
+}
+
+.muted {
+    color: var(--muted);
+    font-size: 13px
+}
+
+.back {
+    display: inline-block;
+    margin-top: 10px;
+    font-size: 13px;
+    color: #cbb2ff;
+    text-decoration: none
+}
+
+.back:hover {
+    text-decoration: underline
+}
+
+/* --- Login / Auth (dopasowane do stylu Home) --- */
+
+.page-spacer {
+    height: 8px;
+    border-bottom: 1px solid rgba(179, 101, 255, .15);
+    margin: 0 16px 18px;
+}
+
+.auth-card-login {
+    width: 100%;
+    max-width: 520px;
+    margin: 36px auto 60px;
+    padding: 26px 24px;
+    background: var(--panel);
+    border: 1px solid rgba(179, 101, 255, .18);
+    border-radius: 18px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, .45);
+}
+
+/* tytuł z takim samym “neonem” jak na Home */
+.auth-card-title {
+    margin: 0 0 12px;
+    text-align: center;
+    font-size: 24px;
+    font-weight: 800;
+    letter-spacing: .2px;
+    background: linear-gradient(90deg, var(--accent), var(--accent-2));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    text-shadow: 0 0 22px rgba(179, 101, 255, .25);
+}
+
+/* układ formularza: czysty, pionowy grid */
+.input-section {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 12px;
+    margin-top: 10px;
+}
+
+.input-section label {
+    font-size: 14px;
+    color: var(--muted);
+}
+
+.input-section input {
+    width: 100%;
+    background: #0c0c16;
+    border: 1px solid rgba(179, 101, 255, .22);
+    color: var(--text);
+    padding: 10px 12px;
+    border-radius: 10px;
+    outline: none;
+}
+
+.input-section input:focus {
+    border-color: var(--accent);
+    box-shadow: var(--ring);
+}
+
+/* LOGIN: ghost jak "Register" z Home, bez pełnej szerokości */
+.auth-card-login .input-section button[type="submit"] {
+    width: auto;
+    /* nie na całą szerokość */
+    justify-self: center;
+    /* wyśrodkowanie w gridzie */
+    margin-top: 6px;
+    padding: 10px 18px;
+    border-radius: 12px;
+    border: 1px solid rgba(179, 101, 255, .35);
+    background: transparent;
+    /* ghost */
+    color: var(--text);
+    font-weight: 700;
+    font-size: 14px;
+    cursor: pointer;
+    box-shadow: none;
+    /* bez neonu w spoczynku */
+    transition: transform .08s ease, box-shadow .2s ease, border-color .2s ease;
+}
+
+.auth-card-login .input-section button[type="submit"]:hover {
+    border-color: rgba(179, 101, 255, .7);
+    box-shadow: var(--ring);
+    /* podświetlenie jak na Home */
+    transform: translateY(-1px);
+}
+
+/* link do przełączania formularza jak link tekstowy */
+.switch-form {
+    text-align: center;
+    margin-top: 10px;
+}
+
+.switch-form button {
+    background: transparent;
+    border: none;
+    color: #cbb2ff;
+    font-size: 13px;
+    cursor: pointer;
+    padding: 0;
+    text-decoration: underline;
+}
+
+.switch-form button:hover {
+    opacity: .9;
+}
+
+/* status pill kompatybilny z Home (gdy używasz klas connected/disconnected) */
+.status {
+    display: inline-flex;
+    gap: 8px;
+    align-items: center;
+    font-size: 12px;
+    background: #0f1c18;
+    padding: 6px 10px;
+    border-radius: 999px;
+    border: 1px solid rgba(173, 255, 221, .2);
+    color: #adffdd;
+}
+
+.status.disconnected {
+    background: #2a1010;
+    border-color: rgba(255, 100, 100, .25);
+    color: #ffbbbb;
+}
+
+/* --- Register: karta + tytuł + pola + przycisk --- */
+.auth-card-register {
+    width: 100%;
+    max-width: 520px;
+    margin: 36px auto 60px;
+    padding: 26px 24px;
+    background: var(--panel);
+    border: 1px solid rgba(179, 101, 255, .18);
+    border-radius: 18px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, .45);
+}
+
+.auth-card-register .input-section button[type="submit"] {
+    width: auto;
+    /* nie na całą szerokość */
+    justify-self: center;
+    /* wyśrodkowanie w gridzie */
+    margin-top: 6px;
+    padding: 10px 18px;
+    border-radius: 12px;
+    border: 1px solid rgba(179, 101, 255, .35);
+    background: transparent;
+    /* ghost */
+    color: var(--text);
+    font-weight: 700;
+    font-size: 14px;
+    cursor: pointer;
+    box-shadow: none;
+    /* bez neonu w spoczynku */
+    transition: transform .08s ease, box-shadow .2s ease, border-color .2s ease;
+}
+
+.auth-card-register .input-section button[type="submit"]:hover {
+    border-color: rgba(179, 101, 255, .7);
+    box-shadow: var(--ring);
+    /* podświetlenie jak na Home */
+    transform: translateY(-1px);
+}
+
+/* --- FIX: wymuś układ pionowy tylko w kartach auth (nadpisuje ewentualne flexy z App.css) --- */
+.auth-card-login .input-section,
+.auth-card-register .input-section {
+    display: grid !important;
+    grid-template-columns: 1fr;
+    gap: 12px;
+    width: 100%;
+}
+
+.auth-card-login .input-section label,
+.auth-card-register .input-section label {
+    display: block;
+}
+
+.auth-card-login .input-section input,
+.auth-card-register .input-section input {
+    width: 100%;
+    min-width: 0;
+}
+
+/* responsive */
+@media (max-width: 820px) {
+    .features {
+        grid-template-columns: 1fr;
+    }
+
+    .auth-card-login {
+        margin: 24px 16px;
+        padding: 22px 18px;
+    }
+}
