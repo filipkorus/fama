@@ -9,12 +9,14 @@ from flask_jwt_extended import JWTManager
 from flask_cors import CORS
 from config import Config
 from database import db
+from flask_migrate import Migrate
 
 app = Flask(__name__)
 app.config.from_object(Config)
 
 # Initialize extensions
 db.init_app(app)
+migrate = Migrate(app, db)
 jwt = JWTManager(app)
 CORS(app, origins=Config.CORS_ORIGINS)
 socketio = SocketIO(app, cors_allowed_origins=Config.CORS_ORIGINS)
