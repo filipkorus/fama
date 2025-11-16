@@ -17,3 +17,13 @@ Thumbs.db
 
 # Docker
 docker-compose.override.yml
+
+# Node modules and build outputs
+node_modules
+dist
+build
+.cache
+.next
+.out
+coverage
+npm-debug.log*
