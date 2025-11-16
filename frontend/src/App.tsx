@@ -57,5 +57,20 @@ function App() {
   )
 }
 
+function ChatPage() {
+  return <Chat />
+}
+
+function App() {
+  return (
+    <Router>
+      <Routes>
+        <Route path="/" element={<RegisterPage />} />
+        <Route path="/chat" element={<ChatPage />} />
+      </Routes>
+    </Router>
+  )
+}
+
 export default App
 
