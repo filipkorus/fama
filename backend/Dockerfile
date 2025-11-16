@@ -41,6 +41,10 @@ RUN pip install --no-cache-dir --upgrade pip setuptools wheel && \
 # Copy application code
 COPY . .
 
+# Copy entrypoint script and make executable
+COPY docker-entrypoint.sh ./docker-entrypoint.sh
+RUN chmod +x ./docker-entrypoint.sh
+
 # Create non-root user
 RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app
 USER appuser
@@ -48,5 +52,6 @@ USER appuser
 # Expose port
 EXPOSE 5000
 
-# Run the application
+# Run entrypoint (runs migrations) then start gunicorn
+ENTRYPOINT ["sh", "/app/docker-entrypoint.sh"]
 CMD ["gunicorn", "--worker-class", "eventlet", "-w", "1", "--bind", "0.0.0.0:5000", "app:app"]

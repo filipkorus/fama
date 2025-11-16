@@ -1,76 +1,59 @@
-import { useState } from 'react'
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
+import { useEffect } from 'react'
 import './App.css'
-import { useWebSocket } from './hooks/useWebSocket'
+import { api } from './services/api'
+import { socket } from './services/socket'
+import Home from './pages/Home'
+import { Login } from './pages/Login'
+import { Register } from './pages/Register'
+import Chat from './pages/Chat'
+import ProtectedRoute from './components/ProtectedRoute'
 
 function App() {
-  const { isConnected, sendMessage, messages, username, register } = useWebSocket()
-  const [messageInput, setMessageInput] = useState('')
-  const [usernameInput, setUsernameInput] = useState('')
+  useEffect(() => {
+    // On app start, if there's a stored token, attach it to API and socket so
+    // refreshing the page preserves authenticated state for HTTP + Socket.IO.
+    try {
+      const token = typeof window !== 'undefined' ? window.localStorage.getItem('authToken') : null
+      if (token) {
+        try {
+          api.defaults.headers.common['Authorization'] = `Bearer ${token}`
+        } catch (err) {
+          console.warn('Failed to set default API authorization header', err)
+        }
 
-  const handleSendMessage = () => {
-    if (!messageInput.trim()) return
-
-    sendMessage(messageInput)
-    setMessageInput('')
-  }
-
-  const handleRegister = () => {
-    if (!usernameInput.trim()) return
-
-    register(usernameInput)
-    setUsernameInput('')
-  }
-
+        try {
+          const bearer = `Bearer ${token}`
+          ;(socket as any).auth = { token: bearer }
+          if (socket.connected) {
+            socket.disconnect()
+          }
+          socket.connect()
+        } catch (err) {
+          console.warn('Failed to (re)connect socket with token', err)
+        }
+      }
+    } catch (err) {
+      console.warn('App initialization error', err)
+    }
+  }, [])
   return (
-    <div className="app">
-      <header>
-        <h1>Post-Quantum Cryptography - WebSocket Demo</h1>
-        <div className={`status ${isConnected ? 'connected' : 'disconnected'}`}>
-          {isConnected ? '🟢 Connected' : '🔴 Disconnected'}
-        </div>
-      </header>
-
-      <main>
-        {!username ? (
-          <div className="chat-section">
-            <h2>Register</h2>
-            <div className="input-section">
-              <input
-                type="text"
-                value={usernameInput}
-                onChange={(e) => setUsernameInput(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && handleRegister()}
-                placeholder="Enter your username..."
-              />
-              <button onClick={handleRegister}>Register</button>
-            </div>
-          </div>
-        ) : (
-          <div className="chat-section">
-            <p style={{ marginBottom: '20px' }}>Logged in as: <strong>{username}</strong></p>
-
-            <div className="messages-list">
-              {messages.map((msg, idx) => (
-                <div key={idx} className="message">
-                  {msg}
-                </div>
-              ))}
-            </div>
-
-            <div className="input-section">
-              <input
-                type="text"
-                value={messageInput}
-                onChange={(e) => setMessageInput(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
-                placeholder="Type a message..."
-              />
-              <button onClick={handleSendMessage}>Send</button>
-            </div>
-          </div>
-        )}
-      </main>
-    </div>
+    <Router>
+      <Routes>
+        <Route path="/" element={<Home />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+        <Route 
+          path="/chat" 
+          element={
+            <ProtectedRoute>
+              <Chat />
+            </ProtectedRoute>
+          } 
+        />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </Router>
   )
 }
 
