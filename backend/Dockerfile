@@ -53,5 +53,7 @@ USER appuser
 EXPOSE 5000
 
 # Run entrypoint (runs migrations) then start gunicorn
-ENTRYPOINT ["./docker-entrypoint.sh"]
+# Use the shell to run the entrypoint script so it doesn't require the
+# executable permission bit (useful when mounting files from Windows hosts).
+ENTRYPOINT ["sh", "/app/docker-entrypoint.sh"]
 CMD ["gunicorn", "--worker-class", "eventlet", "-w", "1", "--bind", "0.0.0.0:5000", "app:app"]
