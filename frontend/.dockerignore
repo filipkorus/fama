@@ -1,0 +1,13 @@
+# Ignoruj zależności lokalne, instalujemy je w kontenerze
+node_modules
+
+# Ignoruj logi npm
+npm-debug.log
+
+# Ignoruj pliki konfiguracyjne środowiska
+.env
+.env.local
+
+# Ignoruj folder wynikowy
+dist
+build

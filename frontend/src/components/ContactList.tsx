@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React from 'react'
 import { Box, List, ListItemButton, ListItemAvatar, Avatar, ListItemText, Typography, Paper } from '@mui/material'
 
 interface Contact {
