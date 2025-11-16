@@ -65,3 +65,27 @@ def sample_public_key():
     kyber768_key_size = 1184
     fake_key = b'0' * kyber768_key_size
     return base64.b64encode(fake_key).decode('utf-8')
+
+
+@pytest.fixture
+def sample_user_with_device(app, sample_public_key):
+    """Create a sample user"""
+    from models import User
+
+    with app.app_context():
+        user = User(username='testuser', public_key=sample_public_key)
+        user.set_password('TestPass123')
+        _db.session.add(user)
+        _db.session.commit()
+
+        yield user
+
+
+@pytest.fixture
+def sample_access_token(app, sample_user_with_device):
+    """Generate access token for sample user"""
+    from flask_jwt_extended import create_access_token
+
+    with app.app_context():
+        token = create_access_token(identity=str(sample_user_with_device.id))
+        yield token
