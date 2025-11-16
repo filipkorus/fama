@@ -27,3 +27,14 @@ build
 .out
 coverage
 npm-debug.log*
+
+# Python files
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.venv
+venv
+.idea
+*.egg-info
+.eggs
