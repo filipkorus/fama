@@ -34,3 +34,7 @@ class Config:
     # Application settings
     DEBUG = os.getenv('FLASK_DEBUG', 'False') == 'True'
     TESTING = os.getenv('FLASK_TESTING', 'False') == 'True'
+
+    # Logger configuration
+    LOGGER_LEVEL = os.getenv('LOGGER_LEVEL', 'DEBUG')
+    LOGGER_FORMAT = '%(asctime)s - %(levelname)s - %(filename)s - %(message)s'
