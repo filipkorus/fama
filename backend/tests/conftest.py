@@ -1,16 +1,16 @@
+from unittest.mock import patch
+from datetime import timedelta
 import pytest
-import sys
 import os
 
-# CRITICAL: Set test database BEFORE any imports
+
+
 os.environ['DATABASE_URL'] = 'sqlite:///:memory:'
 
-# Add parent directory to path
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-
-from datetime import timedelta
-from app import app as flask_app, socketio
-from database import db as _db
+from src.app import app as flask_app, socketio
+from src.database import db as _db
+from src.socketio_handlers.messages import register_message_handlers
+from src.socketio_handlers.connection import register_connection_handlers
 
 class TestConfig:
     """Test configuration"""
@@ -89,3 +89,23 @@ def sample_access_token(app, sample_user_with_device):
     with app.app_context():
         token = create_access_token(identity=str(sample_user_with_device.id))
         yield token
+
+
+@pytest.fixture(scope='module')
+def test_client():
+    register_connection_handlers(socketio)
+    register_message_handlers(socketio)
+
+    with patch('src.socketio_handlers.connection.verify_socket_token') as mock_verify, \
+         patch('src.models.User.get_username_by_userid') as mock_get_username:
+
+        mock_verify.return_value = ({'user_id': 1, 'username': 'fixture_user'}, None)
+        mock_get_username.return_value = 'fixture_user'
+
+        with flask_app.app_context():
+            client = socketio.test_client(flask_app, flask_test_client=flask_app.test_client(), auth={'token': 'Bearer mock'})
+
+            yield client
+
+            if client.is_connected():
+                client.disconnect()

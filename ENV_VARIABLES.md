@@ -40,10 +40,6 @@ JWT_REFRESH_TOKEN_EXPIRES=2592000
 JWT_COOKIE_SECURE=True
 VALIDATE_PASSWORD_STRENGTH=True
 
-# Frontend Configuration
-FRONTEND_PORT=3000
-VITE_API_URL=https://fama.fkor.us/api
-
 # Nginx Configuration
 NGINX_PORT=443
 
@@ -158,17 +154,6 @@ docker-compose logs -f
 - `JWT_COOKIE_SECURE=True` wymaga HTTPS
 - `VALIDATE_PASSWORD_STRENGTH=True` wymusza: wielką/małą literę, cyfrę (min 8 znaków)
 
-### Frontend (React + Vite)
-
-| Zmienna | Domyślna | Opis |
-|---------|----------|------|
-| `FRONTEND_PORT` | `3000` | Port frontendu (wewnętrzny w Docker) |
-| `VITE_API_URL` | `http://localhost:8080` | URL backendu (przez Nginx) |
-
-**Uwagi:**
-- Zmienne dla Vite MUSZĄ zaczynać się od `VITE_`
-- W produkcji użyj HTTPS: `https://fama.fkor.us`
-
 ### Nginx Reverse Proxy
 
 | Zmienna | Domyślna | Opis |
@@ -192,9 +177,6 @@ FLASK_DEBUG=True
 FLASK_TESTING=False
 SECRET_KEY=dev-secret-key-not-for-production
 JWT_SECRET_KEY=dev-jwt-secret-key
-
-FRONTEND_PORT=3000
-VITE_API_URL=http://localhost:8080
 
 NGINX_PORT=8080
 CORS_ORIGINS=*
@@ -221,9 +203,6 @@ JWT_REFRESH_TOKEN_EXPIRES=2592000
 JWT_COOKIE_SECURE=True
 VALIDATE_PASSWORD_STRENGTH=True
 
-FRONTEND_PORT=3000
-VITE_API_URL=https://api.yourdomain.com
-
 NGINX_PORT=443
 CORS_ORIGINS=https://yourdomain.com,https://www.yourdomain.com
 
@@ -248,7 +227,7 @@ SOCKETIO_MESSAGE_QUEUE=
 
 ### "Port already in use"
 
-- Zmień `NGINX_PORT`, `BACKEND_PORT`, lub `FRONTEND_PORT`
+- Zmień `NGINX_PORT`, lub `BACKEND_PORT`
 - Windows: `netstat -ano | findstr :8080`
 - Linux: `lsof -i :8080`
 

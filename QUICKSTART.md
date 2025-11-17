@@ -114,7 +114,7 @@ pip install -r requirements.txt
 $env:DATABASE_URL="postgresql://postgres:postgres@localhost:5432/cryptography_db"
 $env:FLASK_DEBUG="True"
 
-python app.py
+python run.py
 ```
 
 Backend na: http://localhost:5000
