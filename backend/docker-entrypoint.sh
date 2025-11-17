@@ -2,7 +2,7 @@
 set -e
 
 # Ensure Flask app is discoverable by flask CLI
-export FLASK_APP=app
+export FLASK_APP=src.app
 
 echo "Starting docker-entrypoint: running DB migrations if needed"
 
