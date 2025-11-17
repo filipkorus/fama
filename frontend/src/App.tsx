@@ -6,7 +6,7 @@ import { socket } from './services/socket'
 import Home from './pages/Home'
 import { Login } from './pages/Login'
 import { Register } from './pages/Register'
-import Chat from './pages/Chat'
+import Chat from './components/Chat'
 import ProtectedRoute from './components/ProtectedRoute'
 
 function App() {
@@ -52,21 +52,6 @@ function App() {
           } 
         />
         <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-    </Router>
-  )
-}
-
-function ChatPage() {
-  return <Chat />
-}
-
-function App() {
-  return (
-    <Router>
-      <Routes>
-        <Route path="/" element={<RegisterPage />} />
-        <Route path="/chat" element={<ChatPage />} />
       </Routes>
     </Router>
   )
