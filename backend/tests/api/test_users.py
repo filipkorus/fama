@@ -4,8 +4,9 @@ Extracted from test_auth.py - handles /api/users/* endpoints
 """
 
 import pytest
-from models import User
-from database import db
+
+from src.models import User
+from src.database import db
 
 
 class TestUserSearchAPI:
@@ -388,7 +389,7 @@ class TestPublicKeysAPI:
             'password': 'TestPass123',
             'public_key': sample_public_key
         })
-        
+
         # Login as searcher
         login_response = client.post('/api/auth/login', json={
             'username': 'searcher',
