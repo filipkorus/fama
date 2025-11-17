@@ -102,22 +102,24 @@ Plik `.env` można edytować w razie potrzeby.
 
 ```bash
 # Budowanie i uruchomienie wszystkich serwisów
-docker-compose up --build
+docker compose up --build
 
 # W tle (detached mode)
-docker-compose up -d --build
+docker compose up -d --build
 ```
 
 Aplikacja będzie dostępna pod adresem: **http://localhost:8080**
+
+Adminer (DB GUI) będzie dostępny przez nginx pod adresem: `http://localhost:{NGINX_PORT}/adminer/`.
 
 ### 4. Zatrzymanie aplikacji
 
 ```bash
 # Zatrzymanie serwisów
-docker-compose down
+docker compose down
 
 # Zatrzymanie z usunięciem wolumenów (bazy danych)
-docker-compose down -v
+docker compose down -v
 ```
 
 ## Konfiguracja
@@ -178,17 +180,17 @@ Skrypty wykonują następujące operacje:
 
 ```bash
 # Rebuild i uruchomienie wszystkich testów
-docker-compose -f docker-compose.test.yml build --no-cache
-docker-compose -f docker-compose.test.yml up
+docker compose -f docker-compose.test.yml build --no-cache
+docker compose -f docker-compose.test.yml up
 
 # Tylko backend
-docker-compose -f docker-compose.test.yml up backend-test
+docker compose -f docker-compose.test.yml up backend-test
 
 # Tylko frontend
-docker-compose -f docker-compose.test.yml up frontend-test
+docker compose -f docker-compose.test.yml up frontend-test
 
 # Czyszczenie
-docker-compose -f docker-compose.test.yml down
+docker compose -f docker-compose.test.yml down
 ```
 
 ### Testy lokalne (bez Dockera)
@@ -295,7 +297,7 @@ Dla szybszego hot reload i debugowania dostępna jest opcja uruchomienia tylko b
 ./start-dev.sh    # Linux/Mac
 
 # Sprawdź status
-docker-compose -f docker-compose.dev.yml ps
+docker compose -f docker-compose.dev.yml ps
 ```
 
 #### 2. Backend lokalnie
@@ -336,7 +338,7 @@ Frontend dostępny: <http://localhost:5173>
 
 ```bash
 # Zatrzymaj bazę danych
-docker-compose -f docker-compose.dev.yml down
+docker compose -f docker-compose.dev.yml down
 
 # Backend i frontend - Ctrl+C w terminalach
 ```
@@ -347,18 +349,18 @@ docker-compose -f docker-compose.dev.yml down
 
 ```bash
 # Restart wszystkich serwisów
-docker-compose restart
+docker compose restart
 
 # Logi z konkretnego serwisu
-docker-compose logs -f backend
-docker-compose logs -f frontend
+docker compose logs -f backend
+docker compose logs -f frontend
 
 # Wejście do kontenera
-docker-compose exec backend bash
-docker-compose exec db psql -U postgres -d cryptography_db
+docker compose exec backend bash
+docker compose exec db psql -U postgres -d cryptography_db
 
 # Czyszczenie wszystkiego
-docker-compose down -v --rmi all
+docker compose down -v --rmi all
 docker system prune -a
 ```
 
@@ -366,8 +368,8 @@ docker system prune -a
 
 ```bash
 # Backup bazy
-docker-compose exec db pg_dump -U postgres cryptography_db > backup.sql
+docker compose exec db pg_dump -U postgres cryptography_db > backup.sql
 
 # Restore bazy
-cat backup.sql | docker-compose exec -T db psql -U postgres cryptography_db
+cat backup.sql | docker compose exec -T db psql -U postgres cryptography_db
 ```

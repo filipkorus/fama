@@ -3,8 +3,8 @@
 
 echo "[*] Stopping Post-Quantum Cryptography Project..."
 
-docker-compose down
+docker compose down
 
 echo ""
 echo "[+] Application stopped successfully!"
-echo "[i] To remove all data (including database), run: docker-compose down -v"
+echo "[i] To remove all data (including database), run: docker compose down -v"

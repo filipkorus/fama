@@ -15,7 +15,7 @@ if (-not (Test-Path .env)) {
 }
 
 Write-Host "`n[*] Starting database container..." -ForegroundColor Cyan
-docker-compose -f docker-compose.dev.yml up -d
+docker compose -f docker-compose.dev.yml up -d
 
 Write-Host "`n[+] Database started successfully!" -ForegroundColor Green
 Write-Host "`n[i] Connection details:" -ForegroundColor Cyan

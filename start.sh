@@ -12,7 +12,7 @@ fi
 
 echo ""
 echo "[*] Starting Docker containers..."
-docker-compose up --build
+docker compose up --build
 
 echo ""
 echo "[+] Application started successfully!"

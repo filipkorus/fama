@@ -13,7 +13,7 @@ fi
 
 echo ""
 echo "[*] Starting database container..."
-docker-compose -f docker-compose.dev.yml up -d
+docker compose -f docker-compose.dev.yml up -d
 
 echo ""
 echo "[+] Database started successfully!"

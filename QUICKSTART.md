@@ -41,16 +41,16 @@ chmod +x start.sh stop.sh test.sh start-dev.sh
 
 ```bash
 # Uruchomienie w trybie detached (w tle)
-docker-compose up -d --build
+docker compose up -d --build
 
 # Sprawdzenie logów
-docker-compose logs -f
+docker compose logs -f
 
 # Zatrzymanie
-docker-compose down
+docker compose down
 
 # Zatrzymanie z usunięciem danych
-docker-compose down -v
+docker compose down -v
 ```
 
 ## Pierwsze kroki w aplikacji
@@ -80,14 +80,14 @@ NGINX_PORT=8081
 ### Baza danych nie działa
 Sprawdź status kontenera:
 ```bash
-docker-compose ps
-docker-compose logs db
+docker compose ps
+docker compose logs db
 ```
 
 ### Frontend nie łączy się z backendem
 Sprawdź czy wszystkie kontenery działają:
 ```bash
-docker-compose ps
+docker compose ps
 ```
 
 ## Lokalne uruchomienie (Development)
@@ -97,7 +97,7 @@ Dla szybszego developmentu dostępna jest opcja lokalnego uruchomienia backendu 
 ### 1. Uruchom tylko bazę danych
 
 ```bash
-docker-compose -f docker-compose.dev.yml up -d
+docker compose -f docker-compose.dev.yml up -d
 ```
 
 ### 2. Backend

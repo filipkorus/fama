@@ -12,8 +12,6 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-cryptography_db}
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    ports:
-      - "${POSTGRES_PORT:-5432}:5432"
     networks:
       - fama-network
     healthcheck:
@@ -36,8 +34,6 @@ services:
       SECRET_KEY: ${SECRET_KEY:-change-this-secret-key-in-production}
       CORS_ORIGINS: ${CORS_ORIGINS:-*}
       PORT: ${BACKEND_PORT:-5000}
-    ports:
-      - "${BACKEND_PORT:-5000}:5000"
     depends_on:
       db:
         condition: service_healthy
@@ -56,8 +52,6 @@ services:
     restart: unless-stopped
     environment:
       VITE_API_URL: ${VITE_API_URL:-http://localhost:8080/api}
-    ports:
-      - "${FRONTEND_PORT:-3000}:80"
     depends_on:
       - backend
     networks:
@@ -76,6 +70,17 @@ services:
     depends_on:
       - backend
       - frontend
+    networks:
+      - fama-network
+
+  # Adminer (database GUI)
+  adminer:
+    image: adminer:latest
+    container_name: adminer_container
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
     networks:
       - fama-network
 
