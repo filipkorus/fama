@@ -4,8 +4,9 @@ Handles /api/auth/* endpoints only
 """
 
 import pytest
-from models import User, RefreshToken
-from database import db
+
+from src.models import User, RefreshToken
+from src.database import db
 
 
 class TestAuthAPI:

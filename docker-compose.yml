@@ -12,8 +12,6 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-cryptography_db}
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    networks:
-      - fama-network
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
       interval: 10s
@@ -37,11 +35,7 @@ services:
     depends_on:
       db:
         condition: service_healthy
-    networks:
-      - fama-network
-    volumes:
-      - ./backend:/app
-    command: gunicorn --worker-class eventlet -w 1 --bind 0.0.0.0:5000 app:app
+    command: gunicorn --worker-class eventlet -w 1 --bind 0.0.0.0:5000 src.app:app
 
   # React Frontend
   frontend:
@@ -50,12 +44,8 @@ services:
       dockerfile: Dockerfile
     container_name: fama-frontend
     restart: unless-stopped
-    environment:
-      VITE_API_URL: ${VITE_API_URL:-http://localhost:8080/api}
     depends_on:
       - backend
-    networks:
-      - fama-network
 
   # Nginx Reverse Proxy
   nginx:
@@ -70,23 +60,15 @@ services:
     depends_on:
       - backend
       - frontend
-    networks:
-      - fama-network
 
   # Adminer (database GUI)
   adminer:
     image: adminer:latest
-    container_name: adminer_container
+    container_name: fama-adminer
     restart: unless-stopped
     depends_on:
       db:
         condition: service_healthy
-    networks:
-      - fama-network
-
-networks:
-  fama-network:
-    driver: bridge
 
 volumes:
   postgres_data:

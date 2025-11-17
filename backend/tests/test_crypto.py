@@ -49,9 +49,10 @@ Co jest testowane:
 
 import unittest
 import base64
-from crypto.ml_kem import MLKEMCrypto
-from crypto.digital_signature import DigitalSignature
-from crypto.utils import CryptoUtils
+
+from src.crypto.ml_kem import MLKEMCrypto
+from src.crypto.digital_signature import DigitalSignature
+from src.crypto.utils import CryptoUtils
 
 
 class TestMLKEMCrypto(unittest.TestCase):

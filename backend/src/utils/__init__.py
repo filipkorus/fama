@@ -7,5 +7,5 @@ from .validators import validate_username, validate_password, validate_public_ke
 __all__ = [
     'validate_username',
     'validate_password',
-    'validate_public_key'
+    'validate_public_key',
 ]
