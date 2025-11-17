@@ -12,9 +12,10 @@ from flask_jwt_extended import (
     decode_token
 )
 from datetime import datetime, timedelta
-from database import db
-from models import User, RefreshToken
-from utils import validate_username, validate_password, validate_public_key
+
+from ..models import User, RefreshToken
+from ..utils import validate_username, validate_password, validate_public_key
+from ..database import db
 
 auth_bp = Blueprint('auth', __name__, url_prefix='/api/auth')
 

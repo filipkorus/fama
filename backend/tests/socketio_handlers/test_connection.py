@@ -1,143 +1,107 @@
 """
 Tests for WebSocket connection handlers
-Tests connect/disconnect events and authentication
 """
 
 import pytest
-from app import app, socketio
-from models import User, Room, SymmetricKey
-from database import db
-import base64
+from unittest.mock import patch
+from src.socketio_handlers.connection import verify_socket_token
 
+@patch('src.socketio_handlers.connection.decode_token')
+@patch('src.socketio_handlers.connection.db')
+def test_verify_socket_token_success(mock_db, mock_decode):
+    """
+    Test successful verification of a valid JWT token.
+    """
+    mock_decode.return_value = {'sub': 1, 'type': 'access'}
+    mock_db.session.get.return_value = type('User', (object,), {'id': 1, 'username': 'test_user', 'is_active': True})()
 
-@pytest.fixture
-def authenticated_socketio_client(client, sample_public_key):
-    """Create a Socket.IO client with valid authentication"""
-    # Register and login to get access token
-    register_response = client.post('/api/auth/register', json={
-        'username': 'socketuser',
-        'password': 'TestPass123',
-        'public_key': sample_public_key
-    })
+    user_data, error = verify_socket_token('valid_token')
 
-    access_token = register_response.get_json()['access_token']
+    assert error is None
+    assert user_data['user_id'] == 1
+    assert user_data['username'] == 'test_user'
 
-    # Connect to Socket.IO with authentication using test_client
-    socketio_client = socketio.test_client(
-        app,
-        flask_test_client=client,
-        auth={'token': f'Bearer {access_token}'}
-    )
+@patch('src.socketio_handlers.connection.decode_token')
+def test_verify_socket_token_invalid_type(mock_decode):
+    """
+    Test verification failure for a token with an invalid type.
+    """
+    mock_decode.return_value = {'sub': 1, 'type': 'refresh'}
 
-    yield socketio_client
+    user_data, error = verify_socket_token('invalid_token')
 
-    # Cleanup
-    if socketio_client.is_connected():
-        socketio_client.disconnect()
+    assert user_data is None
+    assert error == 'Invalid token type: expected access token'
 
+@patch('src.socketio_handlers.connection.decode_token')
+@patch('src.socketio_handlers.connection.db')
+def test_verify_socket_token_user_not_found(mock_db, mock_decode):
+    """
+    Test verification failure when the user is not found in the database.
+    """
+    mock_decode.return_value = {'sub': 1, 'type': 'access'}
+    mock_db.session.get.return_value = None
 
-class TestWebSocketConnection:
-    """Test WebSocket connection and authentication"""
+    user_data, error = verify_socket_token('valid_token')
 
-    def test_connect_with_valid_token(self, authenticated_socketio_client):
-        """Test Socket.IO connection with valid JWT token"""
-        assert authenticated_socketio_client.is_connected()
+    assert user_data is None
+    assert error == 'User not found'
 
-    def test_connect_without_token(self, app, client):
-        """Test Socket.IO connection without token - should be rejected"""
-        socketio_client = socketio.test_client(app, flask_test_client=client)
-        assert not socketio_client.is_connected()
+@patch('src.socketio_handlers.connection.decode_token')
+@patch('src.socketio_handlers.connection.db')
+def test_verify_socket_token_user_disabled(mock_db, mock_decode):
+    """
+    Test verification failure when the user account is disabled.
+    """
+    mock_decode.return_value = {'sub': 1, 'type': 'access'}
+    mock_db.session.get.return_value = type('User', (object,), {'id': 1, 'username': 'test_user', 'is_active': False})()
 
-    def test_connect_with_invalid_token(self, app, client):
-        """Test Socket.IO connection with invalid token - should be rejected"""
-        socketio_client = socketio.test_client(
-            app,
-            flask_test_client=client,
-            auth={'token': 'Bearer invalid_token_here'}
-        )
-        assert not socketio_client.is_connected()
+    user_data, error = verify_socket_token('valid_token')
 
-    def test_connect_without_bearer_prefix(self, client, sample_public_key):
-        """Test connection with token without 'Bearer ' prefix"""
-        register_response = client.post('/api/auth/register', json={
-            'username': 'testuser2',
-            'password': 'TestPass123',
-            'public_key': sample_public_key
-        })
-        access_token = register_response.get_json()['access_token']
+    assert user_data is None
+    assert error == 'User account is disabled'
 
-        # Connect without 'Bearer ' prefix
-        socketio_client = socketio.test_client(
-            app,
-            flask_test_client=client,
-            auth={'token': access_token}
-        )
+@patch('src.socketio_handlers.connection.decode_token')
+def test_verify_socket_token_invalid_or_expired(mock_decode):
+    """
+    Test verification failure for an invalid or expired token.
+    """
+    mock_decode.side_effect = Exception('Invalid or expired token')
 
-        assert socketio_client.is_connected()
-        socketio_client.disconnect()
+    user_data, error = verify_socket_token('invalid_token')
 
-    def test_connect_loads_user_rooms(self, client, sample_public_key, app):
-        """Test that connection loads all user's rooms with participants and keys"""
-        # Register user
-        register_response = client.post('/api/auth/register', json={
-            'username': 'roomuser',
-            'password': 'TestPass123',
-            'public_key': sample_public_key
-        })
-        access_token = register_response.get_json()['access_token']
+    assert user_data is None
+    assert error == 'Invalid or expired token'
 
-        # Create a room in database
-        with app.app_context():
-            user = User.query.filter_by(username='roomuser').first()
-            room = Room(name='Test Room', is_group=False)
-            room.participants.append(user)
-            db.session.add(room)
-            db.session.commit()
+def test_socket_connect_success(test_client):
+    """
+    Test successful WebSocket connection with mocked Auth and DB.
+    """
+    with patch('src.socketio_handlers.connection.verify_socket_token') as mock_verify, \
+         patch('src.models.User.get_username_by_userid') as mock_get_username:
 
-            # Add symmetric key after room is committed and has an ID
-            sym_key = SymmetricKey(
-                room_id=room.id,
-                user_id=user.id,
-                key_version=1,
-                encrypted_key=base64.b64encode(b'test_key').decode('utf-8')
-            )
-            db.session.add(sym_key)
-            db.session.commit()
+        mock_verify.return_value = ({'user_id': 1, 'username': 'test_user'}, None)
+        mock_get_username.return_value = 'test_user_from_db'
 
-        # Connect
-        socketio_client = socketio.test_client(
-            app,
-            flask_test_client=client,
-            auth={'token': f'Bearer {access_token}'}
-        )
+        auth_payload = {"token": "Bearer fake_token"}
+        test_client.connect(auth=auth_payload)
 
-        # Verify connection was successful and data exists in database
-        assert socketio_client.is_connected()
+        assert test_client.is_connected()
 
-        # Verify the room and key were created correctly
-        with app.app_context():
-            user = User.query.filter_by(username='roomuser').first()
-            rooms = Room.query.filter(Room.participants.contains(user)).all()
-            assert len(rooms) == 1
-            assert rooms[0].name == 'Test Room'
-            assert len(rooms[0].participants) == 1
-            assert rooms[0].participants[0].username == 'roomuser'
+def test_socket_disconnect(test_client):
+    """
+    Test WebSocket disconnection.
+    """
+    with patch('src.socketio_handlers.connection.verify_socket_token') as mock_verify, \
+         patch('src.models.User.get_username_by_userid') as mock_get_username:
 
-            # Verify symmetric key exists
-            sym_key = SymmetricKey.query.filter_by(
-                room_id=rooms[0].id,
-                user_id=user.id,
-                key_version=1
-            ).first()
-            assert sym_key is not None
-            assert sym_key.encrypted_key == base64.b64encode(b'test_key').decode('utf-8')
+        mock_verify.return_value = ({'user_id': 1, 'username': 'disconnect_tester'}, None)
+        mock_get_username.return_value = 'disconnect_tester'
 
-        socketio_client.disconnect()
+        test_client.connect(auth={"token": "Bearer mock_token"})
 
-    def test_disconnect(self, authenticated_socketio_client):
-        """Test Socket.IO disconnection"""
-        assert authenticated_socketio_client.is_connected()
+        assert test_client.is_connected()
 
-        authenticated_socketio_client.disconnect()
+        test_client.disconnect()
 
-        assert not authenticated_socketio_client.is_connected()
+        assert not test_client.is_connected()

@@ -180,7 +180,7 @@ Skrypty wykonują następujące operacje:
 
 ```bash
 # Rebuild i uruchomienie wszystkich testów
-docker compose -f docker-compose.test.yml build --no-cache
+docker compose -f docker-compose.test.yml build
 docker compose -f docker-compose.test.yml up
 
 # Tylko backend
@@ -230,61 +230,6 @@ npm run test:coverage
 npm run test:ui
 ```
 
-## Struktura projektu
-
-```text
-fama/
-├── backend/                    # Backend Flask
-│   ├── app.py                 # Główna aplikacja (WebSocket server)
-│   ├── config.py              # Konfiguracja (nieużywana obecnie)
-│   ├── models.py              # Modele SQLAlchemy (nieużywane obecnie)
-│   ├── database.py            # Połączenie z bazą (nieużywane obecnie)
-│   ├── requirements.txt       # Zależności Python
-│   ├── Dockerfile             # Dockerfile backendu
-│   ├── pytest.ini             # Konfiguracja pytest
-│   └── tests/                 # Testy backendu (6 testów)
-│       ├── conftest.py        # Fixtures testowe
-│       ├── test_api.py        # Testy REST API (2 testy)
-│       └── test_socketio.py   # Testy Socket.IO (4 testy)
-│
-├── frontend/                   # Frontend React
-│   ├── src/
-│   │   ├── App.tsx            # Główny komponent (UI rejestracji + czat)
-│   │   ├── main.tsx           # Entry point
-│   │   ├── hooks/
-│   │   │   └── useWebSocket.ts # Custom hook do WebSocket
-│   │   ├── services/
-│   │   │   ├── api.ts         # REST API service
-│   │   │   └── socket.ts      # Socket.IO connection
-│   │   └── tests/             # Testy frontendu (15 testów)
-│   │       ├── App.test.tsx
-│   │       ├── useWebSocket.test.ts
-│   │       ├── api.test.ts
-│   │       └── setup.ts
-│   ├── package.json           # Zależności Node.js
-│   ├── vite.config.ts         # Konfiguracja Vite
-│   ├── vitest.config.ts       # Konfiguracja Vitest
-│   ├── Dockerfile             # Dockerfile produkcyjny
-│   └── Dockerfile.test        # Dockerfile testowy
-│
-├── nginx/                      # Konfiguracja Nginx
-│   ├── nginx.conf             # Główna konfiguracja
-│   └── conf.d/
-│       └── default.conf       # Routing reverse proxy
-│
-├── docker-compose.yml          # Compose główny (wszystkie serwisy)
-├── docker-compose.dev.yml      # Compose dev (tylko baza danych)
-├── docker-compose.test.yml     # Compose testowy
-├── start.ps1 / start.sh       # Skrypty uruchomienia aplikacji
-├── start-dev.ps1 / start-dev.sh # Skrypty uruchomienia bazy dev
-├── stop.ps1 / stop.sh         # Skrypty zatrzymania
-├── test.ps1 / test.sh         # Skrypty testów
-├── .env.example               # Przykładowa konfiguracja (Docker)
-├── backend/.env.example       # Przykładowa konfiguracja (backend lokalnie)
-├── frontend/.env.example      # Przykładowa konfiguracja (frontend lokalnie)
-└── README.md                  # Ta dokumentacja
-```
-
 ### Lokalne uruchomienie (development bez Dockera)
 
 Dla szybszego hot reload i debugowania dostępna jest opcja uruchomienia tylko bazy danych w Dockerze, przy jednoczesnym lokalnym uruchomieniu backendu i frontendu.
@@ -312,7 +257,7 @@ pip install -r requirements.txt
 cp .env.example .env
 
 # Uruchom aplikację
-python app.py
+python run.py
 ```
 
 Backend dostępny: <http://localhost:5000>
