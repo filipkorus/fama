@@ -14,7 +14,7 @@ if (-not (Test-Path .env)) {
 }
 
 Write-Host "`n[*] Starting Docker containers..." -ForegroundColor Cyan
-docker-compose up --build
+docker compose up --build
 
 Write-Host "`n[+] Application started successfully!" -ForegroundColor Green
 Write-Host "[>] Access the application at: http://localhost:8080" -ForegroundColor Cyan
