@@ -1,320 +1,123 @@
-# Post-Quantum Cryptography Project (Kryptografia Postkwantowa)
+# Post-Quantum Cryptography Project
 
-Projekt na przedmiot Kryptografia Postkwantowa.
-
-## Spis treści
-
-- [Architektura](#architektura)
-- [Technologie](#technologie)
-- [Wymagania](#wymagania)
-- [Instalacja i uruchomienie](#instalacja-i-uruchomienie)
-- [Konfiguracja](#konfiguracja)
-- [Testy](#testy)
-- [Struktura projektu](#struktura-projektu)
-- [Funkcjonalności](#funkcjonalności)
-- [Rozwój projektu](#rozwój-projektu)
+Platforma bezpiecznej wymiany wiadomości (Real-time) przygotowana pod implementację algorytmów postkwantowych. Architektura mikroserwisowa oparta o WebSocket.
 
 ## Architektura
 
-Projekt składa się z następujących komponentów:
+**Stack:**
+*   **Frontend:** React 18 (TS), Vite, Socket.IO Client
+*   **Backend:** Python Flask, Flask-SocketIO (Eventlet)
+*   **Baza:** PostgreSQL 15
+*   **Infra:** Docker Compose, Nginx (Reverse Proxy)
 
-```
-┌─────────────┐
-│   Nginx     │  ← Reverse Proxy (port 8080)
-└──────┬──────┘
-       │
-    ┌──┴───────────────────┐
-    │                      │
-┌───▼────┐          ┌──────▼─────┐
-│Frontend│          │  Backend   │
-│React+TS│◄────────►│   Flask    │
-│(port   │ WebSocket│(port 5000) │
-│ 3000)  │Socket.IO │            │
-└────────┘          └──────┬─────┘
-                           │
-                    ┌──────▼──────┐
-                    │ PostgreSQL  │
-                    │ (port 5432) │
-                    └─────────────┘
-```
-
-**Aktualna implementacja:**
-- Minimalistyczny WebSocket server
-- Rejestracja użytkowników
-- Routing wiadomości (broadcast i private)
-- Custom React hook do WebSocket
-- Testy jednostkowe (backend + frontend)
-- Gotowe do rozbudowy o algorytmy kryptografii postkwantowej
-
-## Technologie
-
-### Backend
-
-- **Flask 3.0.0** - Lekki framework webowy
-- **Flask-SocketIO 5.3.5** - Komunikacja WebSocket w czasie rzeczywistym
-- **eventlet 0.33.3** - Asynchroniczny worker dla WebSocket
-- **pytest 7.4.3** - Framework do testowania
-
-### Frontend
-
-- **React 18.2.0** - Biblioteka UI
-- **TypeScript 5.2.2** - Typowany JavaScript
-- **Vite 5.0.0** - Szybki build tool
-- **Socket.IO Client 4.6.0** - Klient WebSocket
-- **Vitest 1.0.0** - Framework do testowania
-
-### Infrastructure
-
-- **Docker** & **Docker Compose** - Konteneryzacja
-- **Nginx** - Reverse proxy
-- **PostgreSQL 15** - Baza danych (gotowa do użycia, obecnie nieaktywna)
+**Komunikacja:**
+Klient łączy się przez Nginx (port 8080). Ruch HTTP trafia do Reacta, WebSocket do Flaska. Baza danych dostępna tylko dla backendu wewnątrz sieci Dockera.
 
 ## Wymagania
 
-- Docker Desktop (Windows/Mac) lub Docker Engine + Docker Compose (Linux)
-- Git
-- (Opcjonalnie) Node.js 20+ i Python 3.11+ dla lokalnego developmentu
+*   Docker + Docker Compose
+*   Git
+*   (Dev) Node.js 20+, Python 3.11+
 
-## Instalacja i uruchomienie
-
-### 1. Klonowanie repozytorium
+## Uruchomienie
 
 ```bash
+# 1. Klonowanie
 git clone https://github.com/filipkorus/fama.git
 cd fama
-```
 
-### 2. Konfiguracja środowiska
-
-Skopiuj przykładowy plik konfiguracyjny:
-
-```bash
-# Windows PowerShell
-Copy-Item .env.example .env
-
-# Linux/Mac
+# 2. Konfiguracja (Linux/Mac)
 cp .env.example .env
-```
+# (Windows: copy .env.example .env)
 
-Plik `.env` można edytować w razie potrzeby.
-
-### 3. Uruchomienie aplikacji
-
-```bash
-# Budowanie i uruchomienie wszystkich serwisów
-docker compose up --build
-
-# W tle (detached mode)
+# 3. Start
 docker compose up -d --build
 ```
 
-Aplikacja będzie dostępna pod adresem: **http://localhost:8080**
+App: `http://localhost:8080`
+Adminer (DB): `http://localhost:8080/adminer/`
 
-Adminer (DB GUI) będzie dostępny przez nginx pod adresem: `http://localhost:{NGINX_PORT}/adminer/`.
+## Development (Hybrid)
 
-### 4. Zatrzymanie aplikacji
+Baza w Dockerze, aplikacja lokalnie (szybszy reload).
 
+**1. Baza danych**
 ```bash
-# Zatrzymanie serwisów
-docker compose down
-
-# Zatrzymanie z usunięciem wolumenów (bazy danych)
-docker compose down -v
+./start-dev.sh  # lub start-dev.ps1
 ```
 
-## Konfiguracja
-
-Konfiguracja systemu odbywa się poprzez plik `.env`:
-
-### PostgreSQL
-```env
-POSTGRES_USER=postgres          # Użytkownik bazy danych
-POSTGRES_PASSWORD=postgres      # Hasło do bazy
-POSTGRES_DB=cryptography_db     # Nazwa bazy danych
-POSTGRES_PORT=5432             # Port PostgreSQL
+**2. Backend**
+```bash
+cd backend
+pip install -r requirements.txt
+python run.py
 ```
+Serwer: `http://localhost:5000`
+
+**3. Frontend**
+```bash
+cd frontend
+npm install
+cp .env.local.example .env.local
+npm run dev
+```
+Serwer: `http://localhost:5173`
+
+## Konfiguracja (.env)
+
+Pełna lista zmiennych konfiguracyjnych. Plik `.env` jest wymagany do uruchomienia `docker compose`.
+
+### Baza danych (PostgreSQL)
+| Zmienna | Domyślnie | Opis |
+| --- | --- | --- |
+| `POSTGRES_USER` | `postgres` | Nazwa użytkownika (superuser) |
+| `POSTGRES_PASSWORD` | `postgres` | Hasło do bazy danych |
+| `POSTGRES_DB` | `cryptography_db` | Nazwa tworzonej bazy danych |
+| `POSTGRES_PORT` | `5432` | Port wewnętrzny kontenera bazy |
 
 ### Backend (Flask)
-```env
-BACKEND_PORT=5000              # Port backendu
-FLASK_DEBUG=False              # Tryb debug
-SECRET_KEY=your-secret-key     # Klucz sesji (ZMIEŃ W PRODUKCJI!)
-CORS_ORIGINS=*                 # Dozwolone originy CORS
-```
+| Zmienna | Przykład | Opis |
+| --- | --- | --- |
+| `BACKEND_PORT` | `5000` | Port, na którym nasłuchuje Flask (w kontenerze) |
+| `FLASK_DEBUG` | `False` | Tryb debugowania (przeładowanie kodu, stacktrace) |
+| `SECRET_KEY` | `your-secret` | Sól kryptograficzna dla sesji i tokenów (wymagana zmiana na prod) |
+| `CORS_ORIGINS` | `*` | Lista domen dozwolonych w polityce CORS |
 
-### Frontend (React)
-```env
-FRONTEND_PORT=3000             # Port frontendu
-VITE_API_URL=http://localhost:8080  # URL backendu
-```
-
-### Nginx
-```env
-NGINX_PORT=8080                # Port reverse proxy
-```
+### Frontend & Proxy
+| Zmienna | Przykład | Opis |
+| --- | --- | --- |
+| `FRONTEND_PORT` | `3000` | Port wewnętrzny serwera plików statycznych/dev |
+| `VITE_API_URL` | `http://localhost:8080` | Adres API widziany przez przeglądarkę klienta |
+| `NGINX_PORT` | `8080` | Główny port publiczny aplikacji (entrypoint) |
 
 ## Testy
 
-### Szybkie uruchomienie testów
-
-#### Windows PowerShell
-
-```powershell
-.\test.ps1
-```
-
-#### Linux/Mac
-
+**Docker (zalecane)**
 ```bash
-./test.sh
-```
+# Full suite (Back+Front) z raportem coverage
+./test.sh  # lub test.ps1
 
-Skrypty wykonują następujące operacje:
-
-1. Przebudowa kontenerów testowych (`--no-cache`)
-2. Uruchomienie testów backendu i frontendu
-3. Wyświetlenie wyników coverage
-4. Czyszczenie kontenerów
-
-### Uruchamianie testów ręcznie w Dockerze
-
-```bash
-# Rebuild i uruchomienie wszystkich testów
-docker compose -f docker-compose.test.yml build
-docker compose -f docker-compose.test.yml up
-
-# Tylko backend
+# Manualnie - wybrany serwis
 docker compose -f docker-compose.test.yml up backend-test
-
-# Tylko frontend
 docker compose -f docker-compose.test.yml up frontend-test
-
-# Czyszczenie
-docker compose -f docker-compose.test.yml down
 ```
 
-### Testy lokalne (bez Dockera)
+**Local (bez konteneryzacji)**
+*   **Backend:** `pytest --cov=.` (uruchamiać w folderze `backend`)
+*   **Frontend:** `npm run test:coverage` (uruchamiać w folderze `frontend`)
 
-Testy można również uruchomić bezpośrednio na lokalnym systemie:
-
-#### Backend (Python)
-
-```bash
-cd backend
-
-# Instalacja zależności
-pip install -r requirements.txt
-
-# Uruchomienie testów
-pytest
-
-# Z coverage w terminalu
-pytest --cov=. --cov-report=term-missing
-```
-
-#### Frontend (TypeScript)
+## Administracja
 
 ```bash
-cd frontend
+# Podgląd logów (wszystkie serwisy)
+docker compose logs -f
 
-# Instalacja zależności
-npm install
-
-# Uruchomienie testów
-npm test
-
-# Z coverage
-npm run test:coverage
-
-# UI interaktywne
-npm run test:ui
-```
-
-### Lokalne uruchomienie (development bez Dockera)
-
-Dla szybszego hot reload i debugowania dostępna jest opcja uruchomienia tylko bazy danych w Dockerze, przy jednoczesnym lokalnym uruchomieniu backendu i frontendu.
-
-#### 1. Uruchom bazę danych
-
-```bash
-# Tylko PostgreSQL w Docker
-./start-dev.ps1   # Windows
-./start-dev.sh    # Linux/Mac
-
-# Sprawdź status
-docker compose -f docker-compose.dev.yml ps
-```
-
-#### 2. Backend lokalnie
-
-```bash
-cd backend
-
-# Zainstaluj zależności
-pip install -r requirements.txt
-
-# Skopiuj i edytuj .env
-cp .env.example .env
-
-# Uruchom aplikację
-python run.py
-```
-
-Backend dostępny: <http://localhost:5000>
-
-#### 3. Frontend lokalnie
-
-```bash
-cd frontend
-
-# Zainstaluj zależności
-npm install
-
-# Skopiuj i edytuj .env.local
-cp .env.local.example .env.local
-
-# Uruchom dev server
-npm run dev
-```
-
-Frontend dostępny: <http://localhost:5173>
-
-#### Zatrzymanie
-
-```bash
-# Zatrzymaj bazę danych
-docker compose -f docker-compose.dev.yml down
-
-# Backend i frontend - Ctrl+C w terminalach
-```
-
-## Przydatne komendy
-
-### Docker
-
-```bash
-# Restart wszystkich serwisów
-docker compose restart
-
-# Logi z konkretnego serwisu
-docker compose logs -f backend
-docker compose logs -f frontend
-
-# Wejście do kontenera
-docker compose exec backend bash
+# Interaktywny shell bazy danych
 docker compose exec db psql -U postgres -d cryptography_db
 
-# Czyszczenie wszystkiego
-docker compose down -v --rmi all
-docker system prune -a
-```
+# Pełny backup bazy do pliku SQL
+docker compose exec db pg_dump -U postgres cryptography_db > dump.sql
 
-### Baza danych
-
-```bash
-# Backup bazy
-docker compose exec db pg_dump -U postgres cryptography_db > backup.sql
-
-# Restore bazy
-cat backup.sql | docker compose exec -T db psql -U postgres cryptography_db
+# Reset środowiska (z usunięciem wolumenów danych!)
+docker compose down -v
 ```

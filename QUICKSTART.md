@@ -1,138 +1,125 @@
 # Quick Start Guide
 
-## Szybkie uruchomienie projektu
+Przewodnik szybkiego uruchomienia i obsługi projektu.
+
+## Szybkie uruchomienie
 
 ### Windows (PowerShell)
 
 ```powershell
-# 1. Uruchom aplikację
+# 1. Uruchomienie aplikacji
 .\start.ps1
 
-# 2. Otwórz przeglądarkę
-# http://localhost:8080
-
-# 3. Zatrzymaj aplikację (w innym terminalu)
+# 2. Zatrzymanie aplikacji
 .\stop.ps1
 
-# 4. Uruchom testy
+# 3. Uruchomienie testów
 .\test.ps1
 ```
 
-### Linux/Mac (Bash)
+### Linux / macOS (Bash)
+
+Wymagane nadanie uprawnień wykonywania (`chmod +x *.sh`).
 
 ```bash
-# Najpierw nadaj uprawnienia do wykonywania
-chmod +x start.sh stop.sh test.sh start-dev.sh
-
-# 1. Uruchom aplikację
+# 1. Uruchomienie aplikacji
 ./start.sh
 
-# 2. Otwórz przeglądarkę
-# http://localhost:8080
-
-# 3. Zatrzymaj aplikację (w innym terminalu)
+# 2. Zatrzymanie aplikacji
 ./stop.sh
 
-# 4. Uruchom testy
+# 3. Uruchomienie testów
 ./test.sh
 ```
 
-## Alternatywne uruchomienie (Docker Compose)
+### Docker Compose (Manualnie)
+
+Uruchomienie bez skryptów pomocniczych.
 
 ```bash
-# Uruchomienie w trybie detached (w tle)
+# Start w tle
 docker compose up -d --build
 
-# Sprawdzenie logów
+# Logi kontenerów
 docker compose logs -f
 
 # Zatrzymanie
-docker compose down
-
-# Zatrzymanie z usunięciem danych
 docker compose down -v
 ```
 
-## Pierwsze kroki w aplikacji
+## Obsługa aplikacji
 
-1. **Otwarcie aplikacji**: http://localhost:8080
-2. **Utworzenie użytkownika**: Wprowadzenie nazwy użytkownika i kliknięcie "Create User"
-3. **Wysłanie wiadomości**: Wprowadzenie wiadomości i kliknięcie "Send Message"
-4. **Testowanie szyfrowania**:
-   - Zaznaczenie checkbox "Encrypt message"
-   - Użycie przycisku "Test Encrypt"
+### Pierwsze kroki
 
-## Dostęp do serwisów
+1.  **Dostęp:** Otwórz przeglądarkę pod adresem `http://localhost:8080`.
+2.  **Użytkownik:** W panelu bocznym wprowadź nazwę i użyj przycisku "Create User".
+3.  **Wiadomości:** Wpisz tekst w polu wejściowym i zatwierdź przyciskiem "Send Message".
+4.  **Szyfrowanie:**
+    *   Zaznacz opcję "Encrypt message".
+    *   Użyj "Test Encrypt" dla podglądu działania algorytmu.
 
-- **Aplikacja główna**: http://localhost:8080
-- **Frontend bezpośrednio**: http://localhost:3000
-- **Backend API**: http://localhost:5000/api/health
-- **PostgreSQL**: localhost:5432
+### Dostępne serwisy
 
-## Częste problemy
+| Usługa | Adres | Opis |
+| --- | --- | --- |
+| **Główny interfejs** | `http://localhost:8080` | Nginx Proxy (App + WebSocket) |
+| **Frontend (Dev)** | `http://localhost:3000` | Serwer deweloperski React |
+| **Backend API** | `http://localhost:5000` | Bezpośredni dostęp do Flask |
+| **PostgreSQL** | `localhost:5432` | Port bazy danych |
 
-### Port jest zajęty
-Zmień port w pliku `.env`:
+## Rozwiązywanie problemów
+
+### Konflikt portów
+Błąd: `Bind for 0.0.0.0:8080 failed`.
+Rozwiązanie: Zmiana portu w pliku `.env`:
 ```env
 NGINX_PORT=8081
 ```
 
-### Baza danych nie działa
-Sprawdź status kontenera:
+### Problemy z bazą danych
+Błąd połączenia lub startu kontenera `db`.
+Diagnostyka:
 ```bash
-docker compose ps
 docker compose logs db
 ```
+Najczęstsza przyczyna: lokalna instancja PostgreSQL zajmuje port 5432. Należy ją zatrzymać lub zmienić mapowanie portów w `.env`.
 
-### Frontend nie łączy się z backendem
-Sprawdź czy wszystkie kontenery działają:
+### Brak komunikacji Frontend-Backend
+Objaw: Błędy WebSocket / API w konsoli przeglądarki.
+Weryfikacja stanu kontenerów:
 ```bash
 docker compose ps
 ```
+Wymagany status `Up` dla serwisów `backend` i `frontend`.
 
-## Lokalne uruchomienie (Development)
+## Development lokalny
 
-Dla szybszego developmentu dostępna jest opcja lokalnego uruchomienia backendu i frontendu:
+Uruchomienie komponentów bez pełnej konteneryzacji (oprócz bazy danych).
 
-### 1. Uruchom tylko bazę danych
-
+**1. Baza danych (Docker)**
 ```bash
 docker compose -f docker-compose.dev.yml up -d
 ```
 
-### 2. Backend
-
+**2. Backend**
 ```bash
 cd backend
-python -m venv venv
-venv\Scripts\activate  # Windows
-# source venv/bin/activate  # Linux/Mac
-
+# Konfiguracja środowiska
+# Windows: $env:FLASK_DEBUG="True"
+# Linux: export FLASK_DEBUG="True"
 pip install -r requirements.txt
-
-# Windows PowerShell
-$env:DATABASE_URL="postgresql://postgres:postgres@localhost:5432/cryptography_db"
-$env:FLASK_DEBUG="True"
-
 python run.py
 ```
+Adres: `http://localhost:5000`
 
-Backend na: http://localhost:5000
-
-### 3. Frontend
-
+**3. Frontend**
 ```bash
 cd frontend
 npm install
-
-# Stwórz .env.local
-echo "VITE_API_URL=http://localhost:5000" > .env.local
-
+# Utworzenie pliku .env.local z VITE_API_URL=http://localhost:5000
 npm run dev
 ```
+Adres: `http://localhost:3000`
 
-Frontend na: http://localhost:3000
-
-## Następne kroki
-
-Pełna dokumentacja dostępna w pliku [README.md](README.md).
+## Dokumentacja
+Szczegóły architektury i konfiguracji dostępne w pliku [README.md](README.md).

@@ -1,67 +1,152 @@
-**Socket.IO — Wiadomości (messages)**
+# Socket.IO — Dokumentacja Wiadomości
 
-Opis eventów odpowiedzialnych za wysyłanie i pobieranie zaszyfrowanych wiadomości.
+Moduł obsługuje wymianę szyfrowanych wiadomości (E2EE) pomiędzy użytkownikami w czasie rzeczywistym. Mechanizm opiera się na protokole Socket.IO i wymaga wcześniejszej autoryzacji połączenia.
 
-- **Wymagania**: połączenie WebSocket z autoryzacją JWT.
+**Wymagania:** Aktywne połączenie WebSocket z ważnym tokenem JWT.
 
-- **Event (client -> server):** `send_message`
-  - Payload:
-    - `recipient_id`: int
-    - `encrypted_content`: string (Base64 AES‑GCM / inny format klienta)
-    - `capsule_mlkem`: string (Base64)
-    - `nonce`: string (Base64)
+## Interfejs Zdarzeń (Events)
 
-  - Działanie serwera:
-    - Weryfikuje autoryzację użytkownika.
-    - Sprawdza, czy `recipient_id` jest aktywnym użytkownikiem.
-    - Zapisuje wiadomość do bazy danych (`Message`): `sender_id`, `recipient_id`, `encrypted_content`, `capsule_mlkem`, `nonce`.
-    - Jeśli odbiorca jest online, oznacza wiadomość jako dostarczoną (`is_delivered = True`) i wysyła event `receive_message` do jego sesji WebSocket.
+### 1. Wysyłanie wiadomości (Client -> Server)
 
-  - `receive_message` payload:
-    - `id`: int (ID wiadomości)
-    - `sender`: { `id`, `username` }
-    - `encrypted_content`, `capsule_mlkem`, `nonce`, `is_delivered`, `created_at`
+Użytkownik wysyła zaszyfrowany payload do odbiorcy.
 
-- **Event (client -> server):** `get_messages`
-  - Payload:
-    - `recipient_id`: int
-    - `limit`: int (opcjonalne, domyślnie 50)
-    - `offset`: int (opcjonalne, domyślnie 0)
+**Event:** `send_message`
 
-  - Działanie serwera:
-    - Weryfikuje autoryzację użytkownika.
-    - Pobiera historię wiadomości 1:1 między użytkownikiem a `recipient_id` (sortowane malejąco po `created_at`, zwraca chronologicznie po odwróceniu).
-    - Oznacza wiadomości jako dostarczone (`is_delivered = True`) dla wiadomości, które odbiorca odczytuje.
-    - Emisja: `messages_history` do requestującego.
+**Payload:**
+```json
+{
+  "recipient_id": 5,                 // ID odbiorcy
+  "encrypted_content": "BASE64...",  // Treść zaszyfrowana (AES-GCM)
+  "capsule_mlkem": "BASE64...",      // Kapsuła klucza sesji (ML-KEM)
+  "nonce": "BASE64..."               // Initialization Vector (IV) dla AES
+}
+```
 
-  - `messages_history` payload:
-    - `messages`: [ { `id`, `recipient_id`, `encrypted_content`, `capsule_mlkem`, `nonce`, `is_delivered`, `created_at`, `sender`: {`id`, `username`} }, ... ]
+**Logika serwera:**
+1.  Weryfikacja sesji nadawcy.
+2.  Weryfikacja istnienia odbiorcy (`recipient_id`).
+3.  Zapis wiadomości w bazie danych (`Message`).
+4.  Sprawdzenie statusu odbiorcy:
+    *   Jeśli **online**: Oznaczenie jako dostarczona (`is_delivered=True`) i natychmiastowa wysyłka (`receive_message`).
+    *   Jeśli **offline**: Wiadomość oczekuje w bazie na pobranie.
 
-- **Event (client -> server):** `get_recent_and_available_users`
-  - Payload: brak
+### 2. Odbieranie wiadomości (Server -> Client)
 
-  - Działanie serwera:
-    - Weryfikuje autoryzację użytkownika.
-    - Pobiera listę użytkowników, z którymi użytkownik ostatnio rozmawiał, oraz innych dostępnych użytkowników.
-    - Emisja: `recent_and_available_users` do requestującego.
+Zdarzenie otrzymywane przez odbiorcę w czasie rzeczywistym.
 
-  - `recent_and_available_users` payload:
-    - `recent_users`: [ { `id`, `username`, `last_message_date` }, ... ] (posortowane malejąco po `last_message_date`)
-    - `available_users`: [ { `id`, `username` }, ... ]
+**Event:** `receive_message`
 
-- **Event (server -> client):** `message_delivered`
-  - Opis: Event wysyłany do nadawcy wiadomości, gdy wiadomość zostanie oznaczona jako dostarczona.
-  - Payload:
-    - `message_id`: int (ID dostarczonej wiadomości)
-    - `recipient_id`: int (ID odbiorcy wiadomości)
+**Payload:**
+```json
+{
+  "id": 1024,
+  "sender": {
+    "id": 3,
+    "username": "bob"
+  },
+  "encrypted_content": "BASE64...",
+  "capsule_mlkem": "BASE64...",
+  "nonce": "BASE64...",
+  "is_delivered": true,
+  "created_at": "ISO_DATE"
+}
+```
 
-  - Uwagi:
-    - Klient może użyć tego eventu do aktualizacji statusu wiadomości w interfejsie użytkownika.
+### 3. Pobieranie historii czatu (Client -> Server)
 
-- **Błędy**: `error` z `{ "message": str }` przy braku autoryzacji, nieistniejącym użytkowniku lub innych błędach serwera.
+Pobiera historię konwersacji z konkretnym użytkownikiem.
 
-Uwagi dotyczące klienta:
+**Event:** `get_messages`
 
-- Klient odpowiada za odszyfrowanie `encrypted_content` używając właściwego klucza (otrzymanego bezpiecznie przez ML‑KEM dla danego urządzenia).
-- `nonce` jest wymagane do weryfikacji integralności (AES‑GCM).
-- Pole `is_delivered` wskazuje, czy wiadomość została dostarczona do odbiorcy.
+**Payload:**
+```json
+{
+  "recipient_id": 5,
+  "limit": 50,       // Opcjonalne (domyślnie 50)
+  "offset": 0        // Opcjonalne (domyślnie 0)
+}
+```
+
+**Odpowiedź serwera:** `messages_history`
+
+**Logika serwera:**
+*   Pobranie wiadomości posortowanych chronologicznie.
+*   Automatyczne oznaczenie nieprzeczytanych wiadomości jako dostarczone (`is_delivered=True`).
+
+**Payload odpowiedzi:**
+```json
+{
+  "messages": [
+    {
+      "id": 998,
+      "sender": { "id": 3, "username": "bob" },
+      "recipient_id": 5,
+      "encrypted_content": "...",
+      "capsule_mlkem": "...",
+      "nonce": "...",
+      "is_delivered": true,
+      "created_at": "..."
+    },
+    // ...
+  ]
+}
+```
+
+### 4. Lista kontaktów (Client -> Server)
+
+Pobiera listę ostatnich rozmówców oraz dostępnych użytkowników.
+
+**Event:** `get_recent_and_available_users`
+
+**Payload:** `brak`
+
+**Odpowiedź serwera:** `recent_and_available_users`
+
+**Payload odpowiedzi:**
+```json
+{
+  "recent_users": [
+    {
+      "id": 5,
+      "username": "alice",
+      "last_message_date": "ISO_DATE"
+    }
+  ],
+  "available_users": [
+    { "id": 8, "username": "charlie" }
+  ]
+}
+```
+
+### 5. Potwierdzenie dostarczenia (Server -> Client)
+
+Informacja zwrotna dla nadawcy o skutecznym dostarczeniu wiadomości do odbiorcy (lub pobraniu jej z historii).
+
+**Event:** `message_delivered`
+
+**Payload:**
+```json
+{
+  "message_id": 1024,
+  "recipient_id": 5
+}
+```
+
+## Obsługa Błędów
+
+W przypadku niepowodzenia operacji (np. błędny odbiorca, błąd bazy danych), serwer emituje zdarzenie `error`.
+
+**Payload:**
+```json
+{
+  "message": "Recipient not found"
+}
+```
+
+## Uwagi Implementacyjne (Client-Side)
+
+1.  **Kryptografia**: Serwer jest "agnostyczny" względem treści. Przekazuje zaszyfrowane payloady (`encrypted_content`, `capsule_mlkem`, `nonce`) bez ich analizy.
+2.  **Odszyfrowywanie**:
+    *   Klient musi użyć swojego klucza prywatnego ML-KEM do decapsulacji klucza sesji z `capsule_mlkem`.
+    *   Następnie używa klucza sesji i `nonce` do odszyfrowania `encrypted_content` (AES-GCM).
+3.  **Status dostarczenia**: Pole `is_delivered` oraz event `message_delivered` służą do aktualizacji UI (np. "ptaszki" przy wiadomości).

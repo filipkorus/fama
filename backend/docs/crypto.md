@@ -1,19 +1,19 @@
-# Moduł Kryptografii Post-Kwantowej - FAMA
+# Moduł Kryptografii Post-Kwantowej (Backend)
 
-Biblioteka do implementacji bezpiecznej wymiany kluczy i podpisów cyfrowych.
+Biblioteka implementująca wymianę kluczy (ML-KEM) i podpisy cyfrowe (ML-DSA) zgodnie ze standardami NIST FIPS.
 
-## Struktura Projektu
+## Struktura Modułu
 
-```
-backend/crypto/
-├── __init__.py              # Inicjalizacja pakietu
-├── ml_kem.py               # Wymiana kluczy ML-KEM (Kyber)
-├── digital_signature.py    # Podpisy cyfrowe ML-DSA (Dilithium)
-└── utils.py                # Funkcje pomocnicze (AES-GCM, Base64)
-```
+Lokalizacja: `backend/crypto/`
 
-## Wymagania
+*   `ml_kem.py`: Implementacja ML-KEM (Kyber).
+*   `digital_signature.py`: Implementacja ML-DSA (Dilithium).
+*   `utils.py`: Funkcje pomocnicze (AES-GCM, Base64).
+*   `__init__.py`: Ekspozycja klas publicznych.
 
+## Instalacja i Zależności
+
+Wymagane pakiety Python:
 ```bash
 pip install -r requirements.txt
 ```
@@ -29,74 +29,68 @@ pip install -r requirements.txt
 >
 > Wrapper próbuje znaleźć bibliotekę `liboqs` w standardowych lokalizacjach systemowych (np. `/usr/local/lib/liboqs.so`).
 
-### Instalacja na Lokalnym Systemie
+### 1. Instalacja na Lokalnym Systemie
 
 Jeśli chcesz pracować lokalnie, musisz zainstalować bibliotekę `liboqs 0.14.0`:
 
-- Pobierz kod źródłowy biblioteki `liboqs` w wersji 0.14.0 klikając w [ten link](https://github.com/open-quantum-safe/liboqs/archive/refs/tags/0.14.0.zip). Następnie rozpakuj archiwum.
-- Po uruchomieniu backendu, biblioteka powinna zostać zainstalowana z rozpakowanego katalogu.
+*   Pobierz kod źródłowy biblioteki `liboqs` w wersji 0.14.0 klikając w [ten link](https://github.com/open-quantum-safe/liboqs/archive/refs/tags/0.14.0.zip). Następnie rozpakuj archiwum.
+*   Po uruchomieniu backendu, biblioteka powinna zostać zainstalowana z rozpakowanego katalogu.
 
-### Instalacja w Docker
+### 2. Instalacja w Docker
 
-W projekcie FAMA dockerfile automatycznie pobiera i kompiluje `liboqs 0.14.0` z oficjalnego repozytorium GitHub, zatem nie musisz robić nic ręcznie.
+W projekcie FAMA `Dockerfile` automatycznie pobiera i kompiluje `liboqs 0.14.0` z oficjalnego repozytorium GitHub, zatem nie jest wymagana ręczna interwencja.
 
-## Testowanie Instalacji
-
-Sprawdzenie czy wszystko jest zainstalowane:
+## Weryfikacja środowiska
 
 ```bash
 python -c "import oqs; print('liboqs:', oqs.oqs_version())"
-python -c "from crypto import MLKEMCrypto, DigitalSignature, CryptoUtils; print('crypto: OK')"
+# Oczekiwane wyjście: liboqs: 0.14.0
+
+python -c "from crypto import MLKEMCrypto, DigitalSignature; print('crypto: OK')"
+# Oczekiwane wyjście: crypto: OK
 ```
 
-### Oczekiwane wyniki:
+## Przewodnik Implementacyjny
 
-```
-liboqs: 0.14.0
-crypto: OK
-```
-
-## Szybki Start
-
-### 1. Wymiana Kluczy (ML-KEM)
+### 1. ML-KEM (Kyber) - Wymiana Kluczy
 
 ```python
 from crypto import MLKEMCrypto
 
-# Inicjalizuj
-crypto = MLKEMCrypto('Kyber768')
+# 1. Inicjalizacja (Kyber768 - NIST Level 3)
+kem = MLKEMCrypto('Kyber768')
 
-# Generuj parę kluczy dla odbiorcy
-pub_key, priv_key = crypto.generate_keypair()
+# 2. Generowanie pary kluczy (Odbiorca)
+public_key, private_key = kem.generate_keypair()
 
-# Nadawca tworzy wspólny sekret
-ciphertext, shared_secret = crypto.encapsulate(pub_key)
+# 3. Enkapsulacja (Nadawca)
+# Tworzy szyfrogram i wspólny sekret na podstawie klucza publicznego
+ciphertext, shared_secret_sender = kem.encapsulate(public_key)
 
-# Odbiorca odzyskuje wspólny sekret
-recovered = crypto.decapsulate(priv_key, ciphertext)
+# 4. Dekapsulacja (Odbiorca)
+# Odzyskuje wspólny sekret z szyfrogramu przy użyciu klucza prywatnego
+shared_secret_receiver = kem.decapsulate(private_key, ciphertext)
 
-# Sekrety powinny być identyczne
-assert shared_secret == recovered
+assert shared_secret_sender == shared_secret_receiver
 ```
 
-### 2. Podpisy Cyfrowe (Dilithium)
+### 2. ML-DSA (Dilithium) - Podpisy Cyfrowe
 
 ```python
 from crypto import DigitalSignature
 
-# Inicjalizuj
-sig = DigitalSignature('Dilithium3')
+# 1. Inicjalizacja (Dilithium3 - NIST Level 3)
+dsa = DigitalSignature('Dilithium3')
 
-# Generuj parę kluczy
-pub_key, priv_key = sig.generate_keypair()
+# 2. Generowanie pary kluczy
+public_key, private_key = dsa.generate_keypair()
 
-# Podpisz dane
-message = b"Tajna wiadomość"
-signature = sig.sign(priv_key, message)
+# 3. Podpisywanie danych
+data = b"Critical Payload"
+signature = dsa.sign(private_key, data)
 
-# Weryfikuj podpis
-is_valid = sig.verify(pub_key, message, signature)
-print(is_valid)  # True
+# 4. Weryfikacja podpisu
+is_valid = dsa.verify(public_key, data, signature)  # True/False
 ```
 
 ### 3. Szyfrowanie Symetryczne (AES-GCM)
@@ -104,120 +98,57 @@ print(is_valid)  # True
 ```python
 from crypto import CryptoUtils
 
-# Generuj klucz
-key = CryptoUtils.generate_random_bytes(32)
+key = CryptoUtils.generate_random_bytes(32)  # 256 bitów
+data = b"Secret Message"
 
-# Szyfruj dane
-plaintext = b"Tajna wiadomość"
-encrypted = CryptoUtils.encrypt_symmetric(key, plaintext)
+# Szyfrowanie (zwraca słownik z 'ciphertext', 'nonce', 'tag')
+encrypted = CryptoUtils.encrypt_symmetric(key, data)
 
-# Odszyfuj
+# Odszyfrowywanie
 decrypted = CryptoUtils.decrypt_symmetric(key, encrypted)
-print(decrypted)  # b"Tajna wiadomość"
 ```
 
-## API
+## Specyfikacja API
 
-### MLKEMCrypto
+### Klasa `MLKEMCrypto`
 
-Wymiana kluczy post-kwantowych (ML-KEM).
+Obsługiwane algorytmy: `Kyber512`, `Kyber768`, `Kyber1024`.
 
-**Algorytmy:** Kyber512, Kyber768, Kyber1024
+*   `generate_keypair()` -> `(bytes, bytes)`
+*   `encapsulate(public_key: bytes)` -> `(bytes, bytes)`: Zwraca `(ciphertext, shared_secret)`.
+*   `decapsulate(private_key: bytes, ciphertext: bytes)` -> `bytes`: Zwraca `shared_secret`.
+*   `export_keypair_base64(pub, priv)` -> `dict`: Konwersja do Base64.
 
-**Metody:**
-- `generate_keypair()` → (public_key, private_key)
-- `encapsulate(public_key)` → (ciphertext, shared_secret)
-- `decapsulate(private_key, ciphertext)` → shared_secret
-- `export_keypair_base64(pub, priv)` → dict
-- `import_keypair_base64(dict)` → (pub, priv)
+### Klasa `DigitalSignature`
 
-### DigitalSignature
+Obsługiwane algorytmy: `Dilithium2`, `Dilithium3`, `Dilithium5`.
 
-Podpisy cyfrowe post-kwantowe (ML-DSA).
+*   `generate_keypair()` -> `(bytes, bytes)`
+*   `sign(private_key: bytes, data: bytes)` -> `bytes`
+*   `verify(public_key: bytes, data: bytes, signature: bytes)` -> `bool`
 
-**Algorytmy:** Dilithium2, Dilithium3, Dilithium5  
-**Haszowanie:** SHA256, SHA512, SHA3-256, SHA3-512
+### Klasa `CryptoUtils`
 
-**Metody:**
-- `generate_keypair()` → (public_key, private_key)
-- `sign(private_key, data)` → signature
-- `verify(public_key, data, signature)` → bool
-- `hash_data(data, hash_algorithm)` → hash
-- `create_signature_package(...)` → dict z metadanymi
-- `verify_package(...)` → dict z wynikami
+*   `encrypt_symmetric(key: bytes, plaintext: bytes)` -> `dict`: Szyfrowanie AES-GCM.
+*   `decrypt_symmetric(key: bytes, encrypted_data: dict)` -> `bytes`.
+*   `generate_random_bytes(size: int)` -> `bytes`.
 
-### CryptoUtils
-
-Funkcje pomocnicze do szyfrowania i kodowania.
-
-**Metody:**
-- `encrypt_symmetric(key, plaintext)` → dict
-- `decrypt_symmetric(key, encrypted_data)` → plaintext
-- `bytes_to_base64(data)` → str
-- `base64_to_bytes(data_b64)` → bytes
-- `generate_random_bytes(size)` → bytes
-
-## Integracja z Backend'em
-
-### Import w aplikacji Flask:
-
-```python
-from flask import Flask
-from crypto import MLKEMCrypto, DigitalSignature
-
-app = Flask(__name__)
-
-@app.route('/api/keys/generate', methods=['POST'])
-def generate_keys():
-    crypto = MLKEMCrypto('Kyber768')
-    pub_key, priv_key = crypto.generate_keypair()
-    return {
-        'public_key': crypto.export_keypair_base64(pub_key, priv_key)['public_key']
-    }
-```
-
-## Specyfikacje
+## Parametry Kryptograficzne (NIST FIPS)
 
 | Parametr | ML-KEM (Kyber768) | ML-DSA (Dilithium3) |
-|----------|------------------|-------------------|
-| Algorytm | Kyber768 | Dilithium3 |
-| Standard | NIST FIPS 203 | NIST FIPS 204 |
-| Klucz publiczny | 1184 bytes | 1952 bytes |
-| Klucz prywatny | 2400 bytes | 4000 bytes |
-| Bezpieczeństwo | 192-bit | 192-bit |
+| --- | --- | --- |
+| Standard | FIPS 203 | FIPS 204 |
+| Poziom bezpieczeństwa | 192-bit (Level 3) | 192-bit (Level 3) |
+| Klucz Publiczny | 1184 bajtów | 1952 bajtów |
+| Klucz Prywatny | 2400 bajtów | 4000 bajtów |
 
-## Błędy i Rozwiązywanie
+## Rozwiązywanie Problemów
 
-### `ImportError: No module named 'oqs'`
+**Błąd:** `ImportError: No module named 'oqs'`
+**Rozwiązanie:** Patrz sekcja "Instalacja i Zależności" (brak biblioteki systemowej `liboqs`).
 
-Zainstaluj liboqs-python:
-```bash
-pip install liboqs-python
-```
+**Błąd:** `ValueError: Tag verification failed`
+**Rozwiązanie:** Weryfikacja integralności danych (uszkodzony szyfrogram/nonce/klucz AES).
 
-> [!IMPORTANT]  
-> Jeśli po instalacji `liboqs-python` wciąż dostajesz ten błąd, oznacza to, że brakuje biblioteki systemowej `liboqs`. Zainstaluj ją według instrukcji w sekcji [Instalacja na Lokalnym Systemie](#instalacja-na-lokalnym-systemie).
-
-### `ValueError: Tag verification failed`
-
-Dane zostały zmienione lub uszkodzone podczas szyfrowania.
-
-### `RuntimeError: Decapsulate failed`
-
-Klucz prywatny lub szyfrogram nie pasują do siebie.
-
-## Notatki
-
-- Wszystkie funkcje zwracają dane w formacie bytes lub Base64
-- Klucze można eksportować do słownika JSON i z powrotem
-- AES-GCM zapewnia zarówno szyfrowanie jak i autentyczność
-- Podpisy cyfrowe gwarantują autentyczność i integralność
-
-## Dokumentacja
-
-Pełna dokumentacja znajduje się w docstrings każdej klasy i metody:
-
-```python
-from crypto import MLKEMCrypto
-help(MLKEMCrypto.encapsulate)
-```
+**Błąd:** `RuntimeError: Decapsulate failed`
+**Rozwiązanie:** Niezgodność pary kluczy KEM.

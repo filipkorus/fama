@@ -1,54 +1,39 @@
-# API Użytkowników - Dokumentacja
+# Dokumentacja API Użytkowników
 
-## Przegląd
+Moduł API użytkowników umożliwia wyszukiwanie kont oraz pobieranie ich kluczy publicznych ML-KEM, niezbędnych do procesu szyfrowania komunikacji.
 
-Moduł API użytkowników zapewnia endpointy do wyszukiwania użytkowników oraz pobierania ich kluczy publicznych ML-KEM. Jest to niezbędne do:
-- Znajdowania użytkowników w celu zaproszenia do pokoju
-- Pobierania kluczy publicznych do szyfrowania wiadomości
-- Implementacji funkcji wyszukiwania użytkowników w aplikacji
+**Wymagana autoryzacja:**
+Token JWT (Access Token) w nagłówku `Authorization`.
 
-> **Uwaga:** Wszystkie endpointy wymagają autoryzacji za pomocą JWT access token.
+Base URL: `/api/users`
 
-## Endpointy API
-
-Wszystkie endpointy znajdują się pod prefiksem `/api/users`.
+## Specyfikacja Endpointów
 
 ### 1. Wyszukiwanie użytkowników
 
 **Endpoint:** `GET /api/users/search`
 
-**Opis:** Wyszukuje użytkowników po username z obsługą paginacji. Zwraca listę użytkowników wraz z ich kluczami publicznymi ML-KEM.
+Wyszukuje użytkowników na podstawie fragmentu nazwy. Obsługuje paginację.
 
-**Headers:**
-```
-Authorization: Bearer <access_token>
-```
+**Parametry (Query):**
+*   `query` (string, wymagane): Fragment nazwy użytkownika (min. 2 znaki).
+*   `page` (int, opcjonalne): Numer strony (domyślnie 1).
+*   `per_page` (int, opcjonalne): Wyników na stronę (domyślnie 10, max 50).
 
-**Query Parameters:**
-- `query` (wymagane) - Fragment username do wyszukania (minimum 2 znaki)
-- `page` (opcjonalne) - Numer strony (domyślnie 1)
-- `per_page` (opcjonalne) - Liczba wyników na stronę (domyślnie 10, maksimum 50)
-
-**Odpowiedź sukcesu (200):**
-
+**Odpowiedź (200 OK):**
 ```json
 {
   "users": [
     {
       "user_id": 5,
       "username": "alice",
-      "public_key": "OwOc0pQrXx..."
-    },
-    {
-      "user_id": 8,
-      "username": "alice123",
-      "public_key": "BwXz1mNsYy..."
+      "public_key": "BASE64_STRING..."
     }
   ],
   "pagination": {
     "page": 1,
     "per_page": 10,
-    "total_count": 2,
+    "total_count": 1,
     "total_pages": 1,
     "has_next": false,
     "has_prev": false
@@ -57,140 +42,104 @@ Authorization: Bearer <access_token>
 ```
 
 **Błędy:**
-- `400` - Brak parametru query lub query za krótkie (< 2 znaki)
-- `401` - Nieprawidłowy lub brakujący access token
-- `500` - Błąd serwera
+*   `400`: Parametr `query` pusty lub krótszy niż 2 znaki.
+*   `401`: Brak autoryzacji.
 
----
-
-### 2. Pobieranie klucza publicznego użytkownika po ID
+### 2. Pobieranie klucza (przez ID)
 
 **Endpoint:** `GET /api/users/<user_id>/public-key`
 
-**Opis:** Pobiera klucz publiczny ML-KEM konkretnego użytkownika na podstawie jego ID.
+Pobiera klucz publiczny użytkownika na podstawie numerycznego identyfikatora.
 
-**Headers:**
-```
-Authorization: Bearer <access_token>
-```
+**Parametry (Path):**
+*   `user_id` (int): ID użytkownika.
 
-**Path Parameters:**
-- `user_id` - ID użytkownika (integer)
-
-**Odpowiedź sukcesu (200):**
-
+**Odpowiedź (200 OK):**
 ```json
 {
   "user_id": 5,
   "username": "alice",
-  "public_key": "OwOc0pQrXx..."
+  "public_key": "BASE64_STRING..."
 }
 ```
 
 **Błędy:**
-- `401` - Nieprawidłowy lub brakujący access token
-- `404` - Użytkownik o podanym ID nie istnieje
-- `500` - Błąd serwera
+*   `404`: Użytkownik nie istnieje.
 
----
-
-### 3. Pobieranie klucza publicznego użytkownika po username
+### 3. Pobieranie klucza (przez Username)
 
 **Endpoint:** `GET /api/users/<username>/public-key`
 
-**Opis:** Pobiera klucz publiczny ML-KEM konkretnego użytkownika na podstawie jego username. Alternatywa do pobierania po ID.
+Pobiera klucz publiczny użytkownika na podstawie nazwy.
 
-**Headers:**
-```
-Authorization: Bearer <access_token>
-```
+**Parametry (Path):**
+*   `username` (string): Nazwa użytkownika.
 
-**Path Parameters:**
-- `username` - Nazwa użytkownika (string)
-
-**Odpowiedź sukcesu (200):**
-
+**Odpowiedź (200 OK):**
 ```json
 {
   "user_id": 5,
   "username": "alice",
-  "public_key": "OwOc0pQrXx..."
+  "public_key": "BASE64_STRING..."
 }
 ```
 
 **Błędy:**
-- `401` - Nieprawidłowy lub brakujący access token
-- `404` - Użytkownik o podanym username nie istnieje
-- `500` - Błąd serwera
+*   `404`: Użytkownik nie istnieje.
 
-**Przykład użycia:**
+## Przykład Implementacji (Client-Side)
+
+Poniższy kod demonstruje pobranie klucza publicznego i wykorzystanie go do zaszyfrowania klucza sesji (KEM Encapsulation).
 
 ```javascript
 import axios from 'axios';
 
-// Funkcja pomocnicza do pobierania klucza publicznego
+// Pobieranie danych użytkownika
 async function getUserPublicKey(username) {
   const accessToken = localStorage.getItem('access_token');
-
   const response = await axios.get(
     `/api/users/${encodeURIComponent(username)}/public-key`,
-    {
-      headers: {
-        'Authorization': `Bearer ${accessToken}`
-      }
-    }
+    { headers: { 'Authorization': `Bearer ${accessToken}` } }
   );
-
   return response.data;
 }
 
-// Przykład: Zapraszanie użytkownika do pokoju
+// Scenariusz: Zaproszenie do szyfrowanego pokoju
 async function inviteUserToRoom(roomId, username) {
   try {
-    // 1. Pobierz klucz publiczny użytkownika
-    const userData = await getUserPublicKey(username);
-    console.log(`Pobrano klucz publiczny użytkownika ${userData.username}`);
+    // 1. Pobierz klucz publiczny odbiorcy
+    const { user_id, public_key } = await getUserPublicKey(username);
 
-    // 2. Wygeneruj lub pobierz klucz symetryczny pokoju
-    const roomSymmetricKey = getRoomSymmetricKey(roomId);
+    // 2. Pobierz klucz symetryczny pokoju (lokalny kontekst)
+    const roomKey = getRoomSymmetricKey(roomId);
 
-    // 3. Zaszyfruj klucz symetryczny używając klucza publicznego ML-KEM
-    const encryptedKey = await mlKemEncapsulate(
-      userData.public_key, 
-      roomSymmetricKey
-    );
+    // 3. ML-KEM Encapsulation (Szyfrowanie klucza pokoju)
+    const encryptedKey = await mlKemEncapsulate(public_key, roomKey);
 
-    // 4. Wyślij zaproszenie przez WebSocket
+    // 4. Wyślij zaproszenie (WebSocket)
     socket.emit('invite_user', {
       room_id: roomId,
-      user_id: userData.user_id,
+      user_id: user_id,
       encrypted_key: encryptedKey
     });
 
-    console.log(`Wysłano zaproszenie do użytkownika ${username}`);
   } catch (error) {
-    if (error.response?.status === 404) {
-      console.error('Użytkownik nie istnieje');
-    } else {
-      console.error('Błąd podczas zapraszania użytkownika:', error);
-    }
+    console.error('Encryption/Invite error:', error);
   }
 }
 ```
 
----
+## Charakterystyka Techniczna
 
-## Szczegóły implementacji
+**Wyszukiwanie:**
+*   Case-insensitive (nie rozróżnia wielkości liter).
+*   Dopasowanie częściowe (substring match).
+*   Limit paginacji: 50 rekordów.
 
-### Wyszukiwanie użytkowników
-
-- **Wyszukiwanie case-insensitive** - wielkość liter nie ma znaczenia
-- **Częściowe dopasowanie** - znajduje użytkowników zawierających fragment query w username
-- **Paginacja** - automatyczna obsługa stron dla dużej liczby wyników
-- **Limit wyników** - maksymalnie 50 wyników na stronę dla wydajności
-
-### Klucze publiczne
-
-- **Format:** Base64-encoded ML-KEM public key
-- **Rozmiar:** 800 bytes (Kyber512), 1184 bytes (Kyber768), lub 1568 bytes (Kyber1024) po dekodowaniu
-- **Użycie:** Do enkapsulacji kluczy symetrycznych przy zapraszaniu użytkowników do pokojów
+**Klucze Publiczne:**
+*   Format: Base64.
+*   Zgodność: ML-KEM (Kyber).
+*   Rozmiary (po dekodowaniu):
+    *   Kyber512: 800 bajtów
+    *   Kyber768: 1184 bajty
+    *   Kyber1024: 1568 bajtów

@@ -1,115 +1,70 @@
-# API Autoryzacji - Dokumentacja
+# Dokumentacja API Autoryzacji
 
-## Przegląd
+System wykorzystuje podwójny mechanizm tokenów JWT (JSON Web Tokens) do zarządzania sesją użytkownika.
 
-Moduł autoryzacji zapewnia bezpieczny system rejestracji i logowania użytkowników z wykorzystaniem tokenów JWT (JSON Web Tokens).
+*   **Access Token**: Przesyłany w nagłówku `Authorization`, służy do autoryzacji zapytań. Zwracany w ciele odpowiedzi JSON.
+*   **Refresh Token**: Przechowywany wyłącznie w ciasteczku `HTTP-only`, służy do odnawiania sesji.
 
-**Mechanizm tokenów:**
-- **Access Token** - wysyłany w odpowiedzi JSON, używany do autoryzacji zapytań API
-  - Zawiera `user_id` w claims
-- **Refresh Token** - wysyłany jako HTTP-only cookie, używany do odświeżania access tokenów
+Base URL: `/api/auth`
 
-> **Ważne:** Refresh tokeny są przechowywane wyłącznie w HTTP-only cookies dla zwiększenia bezpieczeństwa. Access tokeny nadal są zwracane w JSON i powinny być przechowywane bezpiecznie po stronie klienta.
+## Specyfikacja Endpointów
 
-## Endpointy API
+### 1. Rejestracja
 
-Wszystkie endpointy znajdują się pod prefiksem `/api/auth`.
-
-### 1. Rejestracja użytkownika
+Tworzy nowe konto użytkownika. Wymaga wygenerowania pary kluczy ML-KEM (Kyber) po stronie klienta i przesłania klucza publicznego.
 
 **Endpoint:** `POST /api/auth/register`
 
-**Opis:** Tworzy nowe konto użytkownika. Użytkownik musi wygenerować parę kluczy ML-KEM (Kyber) po stronie klienta i przesłać klucz publiczny. Klucz prywatny NIGDY nie powinien być wysyłany do serwera.
-
-**Żądanie:**
+**Payload żądania:**
 ```json
 {
-  "username": "string",
-  "password": "string",
-  "public_key": "string (Base64-encoded ML-KEM public key)"
+  "username": "string",     // 3-80 znaków, [a-zA-Z0-9_-]
+  "password": "string",     // min. 8 znaków
+  "public_key": "string"    // Base64 ML-KEM Public Key
 }
 ```
 
-**Wymagania:**
-
-- **Username:**
-  - Długość: 3-80 znaków
-  - Dozwolone znaki: litery (a-z, A-Z), cyfry (0-9), podkreślnik (_), myślnik (-)
-  - Unikalny w systemie
-
-- **Password:**
-  - Minimum 8 znaków
-  - Walidacja siły hasła (wielkie/małe litery, cyfry) jest opcjonalna i kontrolowana przez `VALIDATE_PASSWORD_STRENGTH` w konfiguracji
-
-- **Public Key:**
-  - Format: Base64-encoded string
-  - Rozmiar zdekodowany: 800 bytes (Kyber512), 1184 bytes (Kyber768), lub 1568 bytes (Kyber1024)
-  - Generowany z biblioteki `liboqs-python` lub kompatybilnej implementacji ML-KEM
-
-**Odpowiedź sukcesu (201):**
-
+**Odpowiedź (201 Created):**
 ```json
 {
   "message": "User registered successfully",
   "user": {
     "id": 1,
-    "username": "testuser",
-    "created_at": "2024-01-15T10:30:00",
-    "updated_at": "2024-01-15T10:30:00"
+    "username": "user1",
+    "created_at": "ISO_DATE",
+    "updated_at": "ISO_DATE"
   },
-  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+  "access_token": "JWT_STRING"
 }
 ```
-
-**Cookies:**
-- `refresh_token` - HTTP-only cookie z refresh tokenem
+*Ciasteczko `refresh_token` jest ustawiane automatycznie.*
 
 **Błędy:**
+*   `400`: Błędne dane wejściowe lub użytkownik istnieje.
+*   `500`: Błąd serwera.
 
-- `400` - Nieprawidłowe dane wejściowe (username, password, lub public_key), lub użytkownik już istnieje
-- `500` - Błąd serwera
-
-**Przykład użycia (axios):**
-
+**Przykład implementacji (Axios):**
 ```javascript
-import axios from 'axios';
-
-// Krok 1: Wygeneruj parę kluczy ML-KEM po stronie klienta
-// UWAGA: Wymaga biblioteki liboqs-node lub WebAssembly implementation
 const crypto = new MLKEMCrypto('Kyber768');
 const { publicKey, privateKey } = await crypto.generateKeypair();
 
-// WAŻNE: Przechowaj privateKey bezpiecznie po stronie klienta!
-// NIGDY nie wysyłaj privateKey do serwera!
+// Klucz prywatny pozostaje lokalnie
 localStorage.setItem('ml_kem_private_key', privateKey);
 
-// Krok 2: Zarejestruj się z kluczem publicznym
-const response = await axios.post('/api/auth/register', {
-  username: 'nowyuzytkownik',
-  password: 'Haslo123',
-  public_key: publicKey, // Base64-encoded
-  device_name: 'Moj Laptop' // Opcjonalne - jeśli brak, użyje User-Agent
-}, {
-  withCredentials: true // Umożliwia odbieranie cookies
-});
-
-console.log(response.data);
-// {
-//   message: "User registered successfully",
-//   user: { id: 1, username: "nowyuzytkownik", ... },
-//   access_token: "..."
-// }
+await axios.post('/api/auth/register', {
+  username: 'user',
+  password: 'password',
+  public_key: publicKey
+}, { withCredentials: true });
 ```
-
----
 
 ### 2. Logowanie
 
+Uwierzytelnia użytkownika i inicjuje sesję.
+
 **Endpoint:** `POST /api/auth/login`
 
-**Opis:** Loguje użytkownika i zwraca tokeny JWT.
-
-**Żądanie:**
+**Payload żądania:**
 ```json
 {
   "username": "string",
@@ -117,231 +72,110 @@ console.log(response.data);
 }
 ```
 
-**Odpowiedź sukcesu (200):**
-
+**Odpowiedź (200 OK):**
 ```json
 {
   "message": "Login successful",
-  "user": {
-    "id": 1,
-    "username": "testuser",
-    "created_at": "2024-01-15T10:30:00",
-    "updated_at": "2024-01-15T10:30:00"
-  },
-  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+  "user": { "id": 1, "username": "user1" },
+  "access_token": "JWT_STRING"
 }
 ```
+*Ciasteczko `refresh_token` jest ustawiane automatycznie.*
 
-**Cookies:**
+### 3. Odświeżanie tokenu (Refresh)
 
-- `refresh_token` - HTTP-only cookie z refresh tokenem
-
-**Błędy:**
-
-- `400` - Brak wymaganych danych (username, password)
-- `401` - Nieprawidłowa nazwa użytkownika lub hasło
-- `500` - Błąd serwera
-
-**Przykład użycia:**
-
-```javascript
-import axios from 'axios';
-
-const response = await axios.post('/api/auth/login', {
-  username: 'nowyuzytkownik',
-  password: 'Haslo123'
-}, {
-  withCredentials: true
-});
-
-console.log(response.data);
-// { message: "Login successful", user: {...}, access_token: "..." }
-```
-
----
-
-### 3. Odświeżanie tokenu
+Generuje nowy Access Token na podstawie ważnego Refresh Tokenu.
 
 **Endpoint:** `POST /api/auth/refresh`
 
-**Opis:** Generuje nowy access token używając refresh tokenu z HTTP-only cookie.
+**Wymagania:**
+*   Ciasteczko `refresh_token` (HTTP-only).
 
-**Cookies:**
-
-- `refresh_token` - Refresh token (HTTP-only cookie)
-
-**Odpowiedź sukcesu (200):**
-
+**Odpowiedź (200 OK):**
 ```json
 {
-  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+  "access_token": "NEW_JWT_STRING"
 }
 ```
 
-**Błędy:**
-
-- `401` - Nieprawidłowy lub unieważniony token
-- `500` - Błąd serwera
-
-**Przykład użycia (axios z interceptorem):**
-
+**Implementacja Interceptora (Auto-refresh):**
 ```javascript
-import axios from 'axios';
-
-// Konfiguracja axios z automatycznym odświeżaniem tokenów
-const api = axios.create({
-  baseURL: '/api',
-  withCredentials: true // Wysyła cookies
-});
-
-// Interceptor odpowiedzi - automatycznie odświeża token gdy wygaśnie
 api.interceptors.response.use(
-  (response) => response, // Jeśli OK, zwróć odpowiedź
+  (response) => response,
   async (error) => {
     const originalRequest = error.config;
-
-    // Jeśli błąd 401 i nie próbowaliśmy jeszcze odświeżyć tokenu
     if (error.response?.status === 401 && !originalRequest._retry) {
-      originalRequest._retry = true; // Oznacz, że próbujemy odświeżyć
-
+      originalRequest._retry = true;
       try {
-        // Wywołaj /refresh aby dostać nowy access token
-        const response = await axios.post('/api/auth/refresh', {}, {
-          withCredentials: true
-        });
-
-        const newAccessToken = response.data.access_token;
-
-        // Zaktualizuj token w localStorage
-        localStorage.setItem('access_token', newAccessToken);
-
-        // Zaktualizuj nagłówek w oryginalnym zapytaniu
-        originalRequest.headers['Authorization'] = `Bearer ${newAccessToken}`;
-
-        // Ponów oryginalne zapytanie z nowym tokenem
+        const { data } = await axios.post('/api/auth/refresh', {}, { withCredentials: true });
+        localStorage.setItem('access_token', data.access_token);
+        originalRequest.headers['Authorization'] = `Bearer ${data.access_token}`;
         return api(originalRequest);
-      } catch (refreshError) {
-        // Refresh token wygasł lub jest nieprawidłowy - wyloguj użytkownika
+      } catch (e) {
         localStorage.removeItem('access_token');
         window.location.href = '/login';
-        return Promise.reject(refreshError);
       }
     }
-
     return Promise.reject(error);
   }
 );
-
-// Użycie - automatycznie odświeży token jeśli wygaśnie
-const getUserData = async () => {
-  const accessToken = localStorage.getItem('access_token');
-  const response = await api.get('/auth/me', {
-    headers: { Authorization: `Bearer ${accessToken}` }
-  });
-  return response.data;
-};
 ```
-
----
 
 ### 4. Wylogowanie
 
+Unieważnia Refresh Token i kończy sesję.
+
 **Endpoint:** `POST /api/auth/logout`
 
-**Opis:** Wylogowuje użytkownika przez unieważnienie refresh tokenu z HTTP-only cookie.
+**Wymagania:**
+*   Ciasteczko `refresh_token`.
 
-**Cookies:**
-
-- `refresh_token` - Refresh token (HTTP-only cookie)
-
-**Odpowiedź sukcesu (200):**
-
+**Odpowiedź (200 OK):**
 ```json
 {
   "message": "Logout successful"
 }
 ```
 
-**Błędy:**
+### 5. Dane użytkownika (Me)
 
-- `401` - Nieprawidłowy token
-- `500` - Błąd serwera
-
-**Przykład użycia (axios):**
-
-```javascript
-import axios from 'axios';
-
-const logout = async () => {
-  await axios.post('/api/auth/logout', {}, {
-    withCredentials: true // Wysyła HTTP-only cookie z refresh tokenem
-  });
-
-  localStorage.removeItem('access_token');
-  window.location.href = '/login';
-};
-```
-
-### 5. Pobierz dane użytkownika
+Pobiera dane aktualnie zalogowanego użytkownika.
 
 **Endpoint:** `GET /api/auth/me`
 
-**Opis:** Zwraca informacje o aktualnie zalogowanym użytkowniku.
-
 **Nagłówki:**
-```
-Authorization: Bearer <access_token>
-```
+`Authorization: Bearer <ACCESS_TOKEN>`
 
-**Odpowiedź sukcesu (200):**
+**Odpowiedź (200 OK):**
 ```json
 {
   "user": {
     "id": 1,
-    "username": "testuser",
-    "created_at": "2024-01-15T10:30:00",
-    "updated_at": "2024-01-15T10:30:00"
+    "username": "user1",
+    "created_at": "ISO_DATE"
   }
 }
 ```
 
-**Błędy:**
+## Konfiguracja Tokenów JWT
 
-- `401` - Brak tokenu lub nieprawidłowy token
-- `404` - Użytkownik nie znaleziony
-- `500` - Błąd serwera
+**Access Token**
+*   Typ: Bearer
+*   Ważność: 1 godzina
+*   Lokalizacja: Nagłówek `Authorization` / localStorage
 
----
+**Refresh Token**
+*   Ważność: 30 dni
+*   Lokalizacja: Ciasteczko `HTTP-only`
+*   Bezpieczeństwo: Wymaga flagi `Secure` (HTTPS) na produkcji
 
-## Tokeny JWT
-
-System wykorzystuje dwa rodzaje tokenów JWT:
-
-### Access Token
-
-- **Czas życia:** 1 godzina (domyślnie)
-- **Przeznaczenie:** Autoryzacja zapytań API
-- **Użycie:** Dodaj do nagłówka `Authorization: Bearer <access_token>`
-
-### Refresh Token
-
-- **Czas życia:** 30 dni (domyślnie)
-- **Przeznaczenie:** Generowanie nowych access tokenów
-- **Przechowywanie:**
-  - Zapisywany w HTTP-only cookie po stronie klienta
-  - Zapisywany w bazie danych z możliwością unieważnienia
-- **Użycie:** Automatycznie wysyłany jako cookie do `/api/auth/refresh` aby otrzymać nowy access token
-
----
-
-### Struktura tokenu JWT
-
+**Struktura Payloadu (Claims):**
 ```json
 {
-  "sub": "1",           // ID użytkownika
-  "iat": 1642252800,    // Czas utworzenia
-  "exp": 1642256400,    // Czas wygaśnięcia
-  "jti": "unique-id",   // Unikalny identyfikator tokenu
-  "type": "access"      // Typ tokenu (access/refresh)
+  "sub": "user_id",
+  "type": "access|refresh",
+  "iat": 1642252800,
+  "exp": 1642256400,
+  "jti": "unique_uuid"
 }
 ```
