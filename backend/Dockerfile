@@ -11,6 +11,7 @@ RUN apt-get update && apt-get install -y \
     libssl-dev \
     pkg-config \
     postgresql-client \
+    dos2unix \
     && rm -rf /var/lib/apt/lists/*
 
 # Download and extract liboqs 0.14.0 from GitHub
@@ -43,6 +44,7 @@ COPY . .
 
 # Copy entrypoint script and make executable
 COPY docker-entrypoint.sh ./docker-entrypoint.sh
+RUN dos2unix ./docker-entrypoint.sh
 RUN chmod +x ./docker-entrypoint.sh
 
 # Create non-root user
