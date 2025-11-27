@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useWebSocket } from '../hooks/useWebSocket';
 import { api } from '../services/api';
-import { socket } from '../services/socket';
+import { initializeAuth, storeAuthData } from '../services/auth';
 import '../styles.css';
 
 export const Login = () => {
@@ -12,7 +12,7 @@ export const Login = () => {
   const [loading, setLoading] = useState(false);
 
   const navigate = useNavigate();
-  const { isConnected, register } = useWebSocket();
+  const { register } = useWebSocket();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -37,48 +37,11 @@ export const Login = () => {
 
       console.log('Login response:', response.data);
 
-      // Store auth flag, username and access token (if returned)
-      if (typeof window !== 'undefined') {
-        window.localStorage.setItem('auth', 'true');
-        window.localStorage.setItem('username', u);
-
-        const token = response.data && (response.data as any).access_token;
-        if (token) {
-          window.localStorage.setItem('authToken', token);
-
-          // Attach token to API client for subsequent requests
-          try {
-            api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-          } catch (err) {
-            console.warn('Could not set default Authorization header on api client', err);
-          }
-
-          // Make sure Socket.IO sends token during handshake: set auth (with Bearer) and reconnect
-          try {
-            const bearer = `Bearer ${token}`;
-            ;(socket as any).auth = { token: bearer };
-            if (socket.connected) {
-              socket.disconnect();
-            }
-            socket.connect();
-
-            // wait for socket to connect (with a short timeout)
-            await new Promise<void>((resolve, reject) => {
-              const onConnect = () => {
-                socket.off('connect', onConnect);
-                clearTimeout(timer);
-                resolve();
-              };
-              const timer = setTimeout(() => {
-                socket.off('connect', onConnect);
-                reject(new Error('Timed out waiting for socket connect'));
-              }, 5000);
-              socket.on('connect', onConnect);
-            });
-          } catch (err) {
-            console.warn('Socket connect with token failed', err);
-          }
-        }
+      // Store auth data and initialize authentication
+      const token = response.data && (response.data as any).access_token;
+      if (token) {
+        storeAuthData(token, u);
+        await initializeAuth(token);
       }
 
       // Register on WebSocket layer (the hook will emit register)
@@ -103,9 +66,6 @@ export const Login = () => {
         <div className="brand">
           <span className="brand-accent">FAMA</span>
           <span className="brand-sub">– secure chat</span>
-        </div>
-        <div className={`status ${isConnected ? 'connected' : 'disconnected'}`}>
-          {isConnected ? '🟢 Connected' : '🔴 Disconnected'}
         </div>
       </header>
 
