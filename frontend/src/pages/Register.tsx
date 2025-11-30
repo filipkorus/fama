@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useWebSocket } from '../hooks/useWebSocket';
 import { api } from '../services/api';
-import { socket } from '../services/socket';
+import { initializeAuth, storeAuthData } from '../services/auth';
 import { generateMLKEMKeypair, storeKeysLocally, getStoredKeyInfo } from '../services/crypto';
 import '../styles.css';
 
@@ -15,7 +14,6 @@ export const Register = () => {
   const [loading, setLoading] = useState(false);
 
   const navigate = useNavigate();
-  const { isConnected, register } = useWebSocket();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -42,7 +40,7 @@ export const Register = () => {
       console.log('Starting key generation...');
       let publicKey: string;
       let privateKey: string;
-      
+
       try {
         const result = await generateMLKEMKeypair();
         publicKey = result.publicKey;
@@ -52,11 +50,11 @@ export const Register = () => {
         console.error('Key generation failed:', keyGenError);
         throw keyGenError;
       }
-      
+
       if (!publicKey || !privateKey) {
         throw new Error('Key generation returned undefined values');
       }
-      
+
       console.log('Generated keys - Public:', publicKey ? `${publicKey.substring(0, 50)}...` : 'undefined', 'Private:', privateKey ? `${privateKey.substring(0, 50)}...` : 'undefined');
 
       // Store keys in localStorage for persistent memory
@@ -66,66 +64,27 @@ export const Register = () => {
         console.error('Storage failed:', storageError);
         throw storageError;
       }
-      
+
       // Log key info for debugging
       const keyInfo = getStoredKeyInfo();
       console.log('Stored key info:', keyInfo);
 
       // Register user with public key
       console.log('Sending registration request with public_key:', publicKey ? `${publicKey.substring(0, 50)}...` : 'MISSING');
-      const response = await api.post('/auth/register', { 
-        username: u, 
-        password: p, 
-        public_key: publicKey 
+      const response = await api.post('/auth/register', {
+        username: u,
+        password: p,
+        public_key: publicKey
       });
 
       console.log('Registration successful');
 
-      // Store auth data immediately after registration
-      if (typeof window !== 'undefined') {
-        window.localStorage.setItem('auth', 'true');
-        window.localStorage.setItem('username', u);
-
-        const token = response.data && (response.data as any).access_token;
-        if (token) {
-          window.localStorage.setItem('authToken', token);
-
-          // Attach token to API client for subsequent requests
-          try {
-            api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-          } catch (err) {
-            console.warn('Could not set default Authorization header on api client', err);
-          }
-
-          // Ensure Socket.IO uses token during handshake
-          try {
-            const bearer = `Bearer ${token}`;
-            ;(socket as any).auth = { token: bearer };
-            if (socket.connected) {
-              socket.disconnect();
-            }
-            socket.connect();
-
-            await new Promise<void>((resolve, reject) => {
-              const onConnect = () => {
-                socket.off('connect', onConnect);
-                clearTimeout(timer);
-                resolve();
-              };
-              const timer = setTimeout(() => {
-                socket.off('connect', onConnect);
-                reject(new Error('Timed out waiting for socket connect'));
-              }, 5000);
-              socket.on('connect', onConnect);
-            });
-          } catch (err) {
-            console.warn('Socket connect with token failed', err);
-          }
-        }
+      // Store auth data and initialize authentication
+      const token = response.data && (response.data as any).access_token;
+      if (token) {
+        storeAuthData(token, u);
+        await initializeAuth(token);
       }
-
-      // Register in WebSocket layer
-      register(u);
 
       navigate('/chat');
     } catch (err: any) {
@@ -146,9 +105,6 @@ export const Register = () => {
         <div className="brand">
           <span className="brand-accent">FAMA</span>
           <span className="brand-sub">– secure chat</span>
-        </div>
-        <div className={`status ${isConnected ? 'connected' : 'disconnected'}`}>
-          {isConnected ? '🟢 Connected' : '🔴 Disconnected'}
         </div>
       </header>
 

@@ -1,12 +1,8 @@
 import { useNavigate } from 'react-router-dom';
-import '../styles.css';
-import { useWebSocket } from '../hooks/useWebSocket';
 
 export default function Home() {
   const navigate = useNavigate();
-  const { isConnected } = useWebSocket();
-  
-  // Check if user is already logged in
+
   const isLoggedIn = typeof window !== 'undefined' && window.localStorage.getItem('auth') === 'true';
 
   if (isLoggedIn) {
@@ -16,10 +12,6 @@ export default function Home() {
           <div className="brand">
             <span className="brand-accent">FAMA</span>
             <span className="brand-sub">– secure chat</span>
-          </div>
-          <div className={`status ${isConnected ? 'connected' : 'disconnected'}`}>
-            <span className="dot" />
-            <span>{isConnected ? 'Connected' : 'Disconnected'}</span>
           </div>
         </header>
         <main className="hero">
@@ -43,11 +35,6 @@ export default function Home() {
           <span className="brand-sub">– secure chat</span>
         </div>
 
-      
-        <div className={`status ${isConnected ? 'connected' : 'disconnected'}`}>
-          <span className="dot" />
-          <span>{isConnected ? 'Connected' : 'Disconnected'}</span>
-        </div>
       </header>
       <main className="hero">
         <h1 className="title">FAMA</h1>
