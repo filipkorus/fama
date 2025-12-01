@@ -11,16 +11,19 @@ Base URL: `/api/auth`
 
 ### 1. Rejestracja
 
-Tworzy nowe konto użytkownika. Wymaga wygenerowania pary kluczy ML-KEM (Kyber) po stronie klienta i przesłania klucza publicznego.
+Tworzy nowe konto użytkownika. Wymaga wygenerowania dwóch par kluczy po stronie klienta:
+- **ML-KEM (Kyber)**: Do wymiany kluczy sesji (key exchange)
+- **ML-DSA (Dilithium)**: Do podpisów cyfrowych (digital signatures)
 
 **Endpoint:** `POST /api/auth/register`
 
 **Payload żądania:**
 ```json
 {
-  "username": "string",     // 3-80 znaków, [a-zA-Z0-9_-]
-  "password": "string",     // min. 8 znaków
-  "public_key": "string"    // Base64 ML-KEM Public Key
+  "username": "string",                // 3-80 znaków, [a-zA-Z0-9_-]
+  "password": "string",                // min. 8 znaków
+  "public_key": "string",              // Base64 ML-KEM Public Key (Kyber)
+  "dilithium_public_key": "string"     // Base64 ML-DSA Public Key (Dilithium)
 }
 ```
 
@@ -31,8 +34,10 @@ Tworzy nowe konto użytkownika. Wymaga wygenerowania pary kluczy ML-KEM (Kyber) 
   "user": {
     "id": 1,
     "username": "user1",
-    "created_at": "ISO_DATE",
-    "updated_at": "ISO_DATE"
+    "public_key": "BASE64_KYBER_KEY",
+    "dilithium_public_key": "BASE64_DILITHIUM_KEY",
+    "is_active": true,
+    "created_at": "ISO_DATE"
   },
   "access_token": "JWT_STRING"
 }
@@ -45,16 +50,24 @@ Tworzy nowe konto użytkownika. Wymaga wygenerowania pary kluczy ML-KEM (Kyber) 
 
 **Przykład implementacji (Axios):**
 ```javascript
-const crypto = new MLKEMCrypto('Kyber768');
-const { publicKey, privateKey } = await crypto.generateKeypair();
+// Generuj parę kluczy Kyber (do wymiany kluczy sesji)
+const kyberCrypto = new MLKEMCrypto('Kyber768');
+const { publicKey: kyberPubKey, privateKey: kyberPrivKey } = await kyberCrypto.generateKeypair();
 
-// Klucz prywatny pozostaje lokalnie
-localStorage.setItem('ml_kem_private_key', privateKey);
+// Generuj parę kluczy Dilithium (do podpisów cyfrowych)
+const dilithiumCrypto = new DigitalSignature('Dilithium3');
+const { publicKey: dilithiumPubKey, privateKey: dilithiumPrivKey } = await dilithiumCrypto.generateKeypair();
 
+// Zapisz klucze prywatne lokalnie
+localStorage.setItem('ml_kem_private_key', kyberPrivKey);
+localStorage.setItem('dilithium_private_key', dilithiumPrivKey);
+
+// Wyślij tylko klucze publiczne do serwera
 await axios.post('/api/auth/register', {
-  username: 'user',
-  password: 'password',
-  public_key: publicKey
+  username: 'alice',
+  password: 'secure_password',
+  public_key: kyberPubKey,
+  dilithium_public_key: dilithiumPubKey
 }, { withCredentials: true });
 ```
 

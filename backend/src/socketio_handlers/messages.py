@@ -102,6 +102,7 @@ def register_message_handlers(socketio):
         Expected data: {
             'recipient_id': <int>,
             'session_key_id': <int>,        # ID of the previously negotiated key
+            'message_type': <str>,          # 'text' or 'attachment'
             'encrypted_content': <str>,     # Content encrypted with Shared Secret
             'nonce': <str>                  # AES IV for this specific message
         }
@@ -118,12 +119,17 @@ def register_message_handlers(socketio):
 
         recipient_id = data.get('recipient_id')
         session_key_id = data.get('session_key_id')
+        message_type = data.get('message_type', 'text')  # Default to 'text' for backward compatibility
         encrypted_content = data.get('encrypted_content')
         nonce = data.get('nonce')
 
         if not all([recipient_id, session_key_id, encrypted_content, nonce]):
             logger.warning(f'send_message rejected: Missing required fields from {sender_username}')
             emit('error', {'message': 'Invalid message data'})
+            return
+
+        if message_type not in ['text', 'attachment']:
+            emit('error', {'message': 'Invalid message_type. Must be "text" or "attachment"'})
             return
 
         session_key = db.session.get(EncryptedSessionKey, session_key_id)
@@ -135,6 +141,7 @@ def register_message_handlers(socketio):
             sender_id=sender_id,
             recipient_id=recipient_id,
             session_key_id=session_key_id,
+            message_type=message_type,
             encrypted_content=encrypted_content,
             nonce=nonce
         )
@@ -155,6 +162,7 @@ def register_message_handlers(socketio):
                 'sender': {'id': sender_id, 'username': sender_username},
                 'recipient': {'id': recipient_id},
                 'session_key_id': session_key_id,
+                'message_type': message_type,
                 'encrypted_content': encrypted_content,
                 'nonce': nonce,
                 'created_at': message.created_at.isoformat()

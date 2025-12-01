@@ -17,6 +17,7 @@ class User(db.Model):
     username = db.Column(db.String(80), unique=True, nullable=False, index=True)
     password_hash = db.Column(db.String(255), nullable=False)
     public_key = db.Column(db.Text, nullable=False)  # ML-KEM public key (Base64)
+    dilithium_public_key = db.Column(db.Text, nullable=False)  # ML-DSA/Dilithium public key (Base64) for digital signatures
     is_active = db.Column(db.Boolean, default=True, nullable=False)
     created_at = db.Column(db.DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
     updated_at = db.Column(db.DateTime, nullable=False, default=lambda: datetime.now(timezone.utc),
@@ -41,6 +42,7 @@ class User(db.Model):
             'id': self.id,
             'username': self.username,
             'public_key': self.public_key,
+            'dilithium_public_key': self.dilithium_public_key,
             'is_active': self.is_active,
             'created_at': to_utc_z(self.created_at)
         }
@@ -101,6 +103,7 @@ class Message(db.Model):
 
     session_key_id = db.Column(db.Integer, db.ForeignKey('encrypted_session_keys.id'), nullable=False)
 
+    message_type = db.Column(db.String(20), nullable=False, default='text')  # 'text' or 'attachment'
     encrypted_content = db.Column(db.Text, nullable=False)
     nonce = db.Column(db.Text, nullable=False)
 
@@ -117,6 +120,7 @@ class Message(db.Model):
             'sender_id': self.sender_id,
             'recipient_id': self.recipient_id,
             'session_key_id': self.session_key_id,
+            'message_type': self.message_type,
             'encrypted_content': self.encrypted_content,
             'nonce': self.nonce,
             'is_delivered': self.is_delivered,
@@ -149,6 +153,7 @@ class Message(db.Model):
                     'id': msg.id,
                     'recipient_id': msg.recipient_id,
                     'session_key_id': msg.session_key_id,
+                    'message_type': msg.message_type,
                     'encrypted_content': msg.encrypted_content,
                     'nonce': msg.nonce,
                     'is_delivered': msg.is_delivered,
@@ -182,11 +187,12 @@ class Message(db.Model):
                 Message.recipient_id,
                 User.username,
                 User.public_key,
+                User.dilithium_public_key,
                 db.func.max(Message.created_at).label('last_message_date')
             )
             .join(User, User.id == Message.recipient_id)
             .filter(Message.sender_id == sender_id)
-            .group_by(Message.recipient_id, User.username, User.public_key)
+            .group_by(Message.recipient_id, User.username, User.public_key, User.dilithium_public_key)
             .order_by(db.func.max(Message.created_at).desc())
             .all()
         )
@@ -196,18 +202,20 @@ class Message(db.Model):
                 'id': recipient_id,
                 'username': username,
                 'public_key': public_key,
+                'dilithium_public_key': dilithium_public_key,
                 'last_message_date': to_utc_z(last_message_date) if last_message_date else None
             }
-            for recipient_id, username, public_key, last_message_date in recent_messages
+            for recipient_id, username, public_key, dilithium_public_key, last_message_date in recent_messages
         ]
 
-        all_users = db.session.query(User.id, User.username, User.public_key).filter(User.is_active == True).all()
+        all_users = db.session.query(User.id, User.username, User.public_key, User.dilithium_public_key).filter(User.is_active == True).all()
 
         all_user_objects = [
             {
                 'id': user.id,
                 'username': user.username,
-                'public_key': user.public_key
+                'public_key': user.public_key,
+                'dilithium_public_key': user.dilithium_public_key
             }
             for user in all_users
         ]
@@ -218,4 +226,32 @@ class Message(db.Model):
         return {
             'recent_users': recent_users,
             'available_users': available_users
+        }
+
+
+class UploadedFile(db.Model):
+    """Model for tracking encrypted file uploads"""
+    __tablename__ = 'uploaded_files'
+
+    id = db.Column(db.Integer, primary_key=True)
+    filename = db.Column(db.String(255), unique=True, nullable=False, index=True)  # UUID filename
+    original_size = db.Column(db.Integer, nullable=False)  # Size in bytes
+    file_hash = db.Column(db.String(64), nullable=False)  # SHA-256 hash
+    uploader_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
+    uploaded_at = db.Column(db.DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
+
+    # Relationship
+    uploader = db.relationship('User', backref='uploaded_files')
+
+    def __repr__(self):
+        return f'<UploadedFile {self.filename}>'
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'filename': self.filename,
+            'size': self.original_size,
+            'hash': self.file_hash,
+            'uploader_id': self.uploader_id,
+            'uploaded_at': to_utc_z(self.uploaded_at)
         }

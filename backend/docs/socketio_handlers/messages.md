@@ -80,16 +80,23 @@ Wiadomość jest szyfrowana kluczem sesji (AES) uzgodnionym wcześniej.
 {
   "recipient_id": 5,
   "session_key_id": 123,         // ID klucza użytego do szyfrowania tej wiadomości
+  "message_type": "text",        // "text" lub "attachment"
   "encrypted_content": "...",    // Treść wiadomości zaszyfrowana kluczem sesji
   "nonce": "BASE64..."           // Unikalny IV dla TEJ konkretnej wiadomości
 }
 ```
 
+**Pole `message_type`:**
+
+* `"text"` - zwykła wiadomość tekstowa (po odszyfrowaniu: plain text)
+* `"attachment"` - załącznik (po odszyfrowaniu: JSON z metadanymi pliku)
+
 **Logika serwera:**
 
-- Weryfikacja czy `session_key_id` istnieje.
-- Zapis wiadomości w bazie.
-- Natychmiastowe dostarczenie (jeśli odbiorca online).
+* Weryfikacja czy `session_key_id` istnieje.
+* Walidacja `message_type` ('text' lub 'attachment').
+* Zapis wiadomości w bazie wraz z `message_type`.
+* Natychmiastowe dostarczenie (jeśli odbiorca online).
 
 ### 2. Odbieranie wiadomości (Server -> Client)
 
@@ -108,12 +115,18 @@ Event otrzymywany przez odbiorcę w czasie rzeczywistym.
   },
   "recipient": { "id": 5 },
   "session_key_id": 123,         // Ważne: Klient sprawdza, czy ma ten klucz
+  "message_type": "text",        // "text" lub "attachment"
   "encrypted_content": "BASE64...",
   "nonce": "BASE64...",
   "is_delivered": true,
   "created_at": "ISO_DATE"
 }
 ```
+
+**Pole `message_type` informuje frontend jak interpretować odszyfrowaną zawartość:**
+
+* `"text"` → Po odszyfrowaniu wyświetl jako zwykły tekst
+* `"attachment"` → Po odszyfrowaniu parsuj jako JSON i obsłuż jako załącznik
 
 ### 3. Potwierdzenie dostarczenia (Server -> Client)
 
