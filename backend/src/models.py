@@ -47,6 +47,16 @@ class User(db.Model):
             'created_at': to_utc_z(self.created_at)
         }
 
+    def to_dict_for_message(self, message_type='text'):
+        """Return user dict for message events. Include dilithium_public_key for attachments."""
+        data = {
+            'id': self.id,
+            'username': self.username
+        }
+        if message_type == 'attachment':
+            data['dilithium_public_key'] = self.dilithium_public_key
+        return data
+
 
 class RefreshToken(db.Model):
     """Model for storing refresh tokens"""
@@ -158,10 +168,7 @@ class Message(db.Model):
                     'nonce': msg.nonce,
                     'is_delivered': msg.is_delivered,
                     'created_at': to_utc_z(msg.created_at),
-                    'sender': {
-                        'id': msg.sender.id,
-                        'username': msg.sender.username,
-                    },
+                    'sender': msg.sender.to_dict_for_message(msg.message_type),
                     'recipient': {
                         'id': msg.recipient.id,
                         'username': msg.recipient.username

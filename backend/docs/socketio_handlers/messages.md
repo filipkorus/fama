@@ -111,7 +111,8 @@ Event otrzymywany przez odbiorcę w czasie rzeczywistym.
   "id": 1024,
   "sender": {
     "id": 3,
-    "username": "bob"
+    "username": "bob",
+    "dilithium_public_key": "BASE64..."  // TYLKO dla message_type="attachment"
   },
   "recipient": { "id": 5 },
   "session_key_id": 123,         // Ważne: Klient sprawdza, czy ma ten klucz
@@ -127,6 +128,8 @@ Event otrzymywany przez odbiorcę w czasie rzeczywistym.
 
 * `"text"` → Po odszyfrowaniu wyświetl jako zwykły tekst
 * `"attachment"` → Po odszyfrowaniu parsuj jako JSON i obsłuż jako załącznik
+
+**WAŻNE:** Pole `sender.dilithium_public_key` jest dołączane **tylko** gdy `message_type="attachment"`. Klucz publiczny Dilithium jest wymagany do weryfikacji podpisu cyfrowego pliku przez odbiorcę.
 
 ### 3. Potwierdzenie dostarczenia (Server -> Client)
 
@@ -171,16 +174,23 @@ Informacja dla nadawcy.
   "messages": [
     {
       "id": 998,
+      "message_type": "text",      // "text" lub "attachment"
       "session_key_id": 123,       // Klient używa tego ID do deszyfracji
       "encrypted_content": "...",
       "nonce": "...",
       "is_delivered": true,
       "created_at": "...",
-      "sender": { "id": 3, "username": "bob" }
+      "sender": {
+        "id": 3,
+        "username": "bob",
+        "dilithium_public_key": "BASE64..."  // TYLKO dla message_type="attachment"
+      }
     }
   ]
 }
 ```
+
+**WAŻNE:** Pole `sender.dilithium_public_key` w historii wiadomości jest dołączane **tylko** gdy `message_type="attachment"`.
 
 ### 2. Lista kontaktów (Client -> Server)
 
@@ -200,7 +210,8 @@ Pobiera listę ostatnich rozmówców oraz dostępnych użytkowników. Ważne: Zw
     {
       "id": 5,
       "username": "alice",
-      "public_key": "BASE64_KEY...",  // <--- Klucz publiczny ML-KEM
+      "public_key": "BASE64_KEY...",            // Klucz publiczny ML-KEM (do key exchange)
+      "dilithium_public_key": "BASE64_KEY...",  // Klucz publiczny Dilithium (do weryfikacji podpisów)
       "last_message_date": "ISO_DATE"
     }
   ],
@@ -208,11 +219,17 @@ Pobiera listę ostatnich rozmówców oraz dostępnych użytkowników. Ważne: Zw
     { 
       "id": 8, 
       "username": "charlie",
-      "public_key": "BASE64_KEY..."   // <--- Klucz publiczny ML-KEM
+      "public_key": "BASE64_KEY...",            // Klucz publiczny ML-KEM
+      "dilithium_public_key": "BASE64_KEY..."   // Klucz publiczny Dilithium
     }
   ]
 }
 ```
+
+**Uwaga:** Lista kontaktów zawiera oba klucze publiczne użytkowników:
+
+* `public_key` (ML-KEM) - do uzgadniania kluczy sesji
+* `dilithium_public_key` (ML-DSA) - do weryfikacji podpisów cyfrowych plików
 
 ---
 

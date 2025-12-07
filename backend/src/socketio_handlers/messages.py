@@ -157,9 +157,15 @@ def register_message_handlers(socketio):
 
         recipient_sid = sio_conn_users.get_sid_by_user_id(user_id=recipient_id)
         if recipient_sid:
+            sender_user = db.session.get(User, sender_id)
+            sender_data = sender_user.to_dict_for_message(message_type) if sender_user else {
+                'id': sender_id,
+                'username': sender_username
+            }
+
             emit('receive_message', {
                 'id': message.id,
-                'sender': {'id': sender_id, 'username': sender_username},
+                'sender': sender_data,
                 'recipient': {'id': recipient_id},
                 'session_key_id': session_key_id,
                 'message_type': message_type,
