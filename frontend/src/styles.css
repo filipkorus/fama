@@ -63,7 +63,6 @@ body {
     color: #bbb
 }
 
-/* półprzezroczysty „Connected” z lekkim blurrem */
 .status {
     display: inline-flex;
     gap: 8px;
@@ -71,9 +70,7 @@ body {
     font-size: 12px;
     color: #adffdd;
     background: rgba(15, 28, 24, .55);
-    /* półprzezroczyste tło */
     backdrop-filter: blur(6px);
-    /* delikatny blur szkła */
     padding: 6px 10px;
     border-radius: 999px;
     border: 1px solid rgba(173, 255, 221, .25);

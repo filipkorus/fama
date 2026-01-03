@@ -7,6 +7,10 @@ import ContactList from "./ContactList";
 import ChatHeader from "./ChatHeader";
 import MessageList from "./MessageList";
 import MessageInput from "./MessageInput";
+import { api } from '../services/api';
+import { packRawFilePayload, encryptFilePayload, toBase64 } from '../services/crypto';
+import { signFileRaw } from '../services/fileSignature';
+import { ensureUint8Array } from '../utils/buffer';
 
 interface DisplayMessage {
   id: string;
@@ -37,7 +41,7 @@ export const Chat: React.FC<ChatProps> = ({ to: toProp }) => {
   const [attachments, setAttachments] = useState<File[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
   
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null!);
   const scrollRef = useRef<HTMLDivElement | null>(null);
   
   const prevScrollHeightRef = useRef<number>(0);
@@ -130,6 +134,79 @@ export const Chat: React.FC<ChatProps> = ({ to: toProp }) => {
     }
   };
 
+  const handleSendAttachment = async (file: File) => {
+    if (!targetUser || !targetUserId || !targetUser.public_key) return;
+
+    try {
+      console.log('[Attachment] Preparing to send file:', file.name, file.size);
+
+      const fileArrayBuffer = await file.arrayBuffer() as ArrayBuffer;
+      const fileBytes = new Uint8Array(fileArrayBuffer);
+
+      const { hashBytes, signatureBytes, publicKeyBytes } = await signFileRaw(fileBytes);
+      console.log('[Attachment] ML-DSA signature bytes length:', signatureBytes.length);
+
+      const metadata = {
+        filename: file.name,
+        mime_type: file.type || 'application/octet-stream',
+        size: file.size,
+        timestamp: new Date().toISOString(),
+      };
+
+      // RAW_PAYLOAD = [SigLen|MetaLen|Meta|Sig|File]
+      const rawPayload = packRawFilePayload(signatureBytes, metadata, fileBytes);
+      console.log('[Attachment] RAW payload length:', rawPayload.length);
+
+      // Jednorazowy klucz i IV dla AES-GCM
+      const fileKey = crypto.getRandomValues(new Uint8Array(32)); // 256-bit
+      const fileIV = crypto.getRandomValues(new Uint8Array(12));  // 96-bit
+
+      // Szyfrowanie RAW_PAYLOAD
+      const encryptedBlob = await encryptFilePayload(fileKey, fileIV, rawPayload);
+      console.log('[Attachment] Encrypted blob length:', encryptedBlob.length);
+
+      // Upload zaszyfrowanego blobu na backend jako 'file'
+      const formData = new FormData();
+      const safeEncryptedBlob = ensureUint8Array(encryptedBlob);
+      const blob = new Blob([safeEncryptedBlob as any], { type: "application/octet-stream" });
+      formData.append("file", blob, "encrypted.bin");
+
+      const uploadResponse = await api.post('/files/upload', formData);
+      const uploaded = uploadResponse.data as any;
+      console.log('[Attachment] Upload response:', uploaded);
+
+      // backend: { url, filename, size, hash, uploaded_at }
+      const attachmentMetadata = {
+        type: 'file',
+        url: uploaded.url,
+        filename: uploaded.filename,
+        size: uploaded.size,
+        encrypted_hash: uploaded.hash,
+        file_key: toBase64(fileKey),
+        file_iv: toBase64(fileIV),
+        signer_public_key: toBase64(publicKeyBytes),
+        file_hash: toBase64(hashBytes),
+        signature: toBase64(signatureBytes),
+        signature_algorithm: 'ML-DSA-65',
+        hash_algorithm: 'SHA256',
+        mime_type: metadata.mime_type,
+        original_size: metadata.size,
+        original_filename: metadata.filename,
+        uploaded_at: uploaded.uploaded_at,
+      };
+
+      const metadataText = JSON.stringify(attachmentMetadata);
+
+      await sendMessage(metadataText, targetUserId, targetUser.public_key);
+      setAttachments((prev) => prev.filter((f) => f !== file));
+      if (messageInput.trim().length > 0) {
+        await handleSend();
+      }
+    } catch (error) {
+      console.error('[Attachment] Failed to send attachment:', error);
+    }
+  };
+
   const transformMessages = (messages: MessageData[]): DisplayMessage[] => {
     return messages.map((msg) => ({
       id: String(msg.id),
@@ -163,7 +240,7 @@ export const Chat: React.FC<ChatProps> = ({ to: toProp }) => {
 
   if (!targetUser) {
     return (
-       <Box sx={{ display: 'flex', height: '100vh', justifyContent: 'center', alignItems: 'center', bgcolor: "#1a002a" }}>
+      <Box sx={{ display: 'flex', height: '100vh', justifyContent: 'center', alignItems: 'center', bgcolor: "#1a002a" }}>
         <CircularProgress color="secondary" />
       </Box>
     );
@@ -249,6 +326,7 @@ export const Chat: React.FC<ChatProps> = ({ to: toProp }) => {
               attachments={attachments}
               setAttachments={setAttachments}
               onSend={handleSend}
+              onSendAttachment={handleSendAttachment}
               fileInputRef={fileInputRef}
               disabled={!isConnected}
             />

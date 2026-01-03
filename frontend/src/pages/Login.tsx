@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
 import { initializeAuth, storeAuthData } from '../services/auth';
 import '../styles.css';
+import { generateDilithiumKeypair, storeDilithiumKeys, retrieveDilithiumKeys } from '../services/fileSignature';
 
 export const Login = () => {
   const [usernameInput, setUsernameInput] = useState('');
@@ -39,6 +40,20 @@ export const Login = () => {
       if (token) {
         storeAuthData(token, u);
         await initializeAuth(token);
+
+        const existing = retrieveDilithiumKeys();
+        if (!existing) {
+          try {
+            console.log('[Login] No Dilithium keys found, generating...');
+            const { publicKey, privateKey } = await generateDilithiumKeypair();
+            storeDilithiumKeys(publicKey, privateKey);
+            console.log('[Login] Dilithium keys generated & stored');
+          } catch (e) {
+            console.error('[Login] Failed to generate Dilithium keys:', e);
+          }
+        } else {
+          console.log('[Login] Dilithium keys already present in localStorage');
+        }
       }
 
       navigate('/chat');
