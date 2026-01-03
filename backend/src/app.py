@@ -7,7 +7,7 @@ import logging
 
 from .config import Config
 from .database import db
-from .api import auth_bp, users_bp
+from .api import auth_bp, users_bp, files_bp
 from .socketio_handlers import register_all_handlers
 
 logging.basicConfig(
@@ -28,6 +28,7 @@ socketio = SocketIO(app, cors_allowed_origins=Config.CORS_ORIGINS)
 
 app.register_blueprint(auth_bp)
 app.register_blueprint(users_bp)
+app.register_blueprint(files_bp)
 
 @app.before_request
 def log_request():

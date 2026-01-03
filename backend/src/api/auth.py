@@ -14,7 +14,7 @@ from flask_jwt_extended import (
 from datetime import datetime, timedelta
 
 from ..models import User, RefreshToken
-from ..utils import validate_username, validate_password, validate_public_key
+from ..utils import validate_username, validate_password, validate_public_key, validate_dilithium_public_key
 from ..database import db
 
 auth_bp = Blueprint('auth', __name__, url_prefix='/api/auth')
@@ -29,7 +29,8 @@ def register():
         {
             "username": "string",
             "password": "string",
-            "public_key": "string (Base64-encoded ML-KEM public key)"
+            "public_key": "string (Base64-encoded ML-KEM public key)",
+            "dilithium_public_key": "string (Base64-encoded ML-DSA/Dilithium public key)"
         }
 
     Returns:
@@ -46,6 +47,7 @@ def register():
         username = data.get('username', '').strip()
         password = data.get('password', '')
         public_key = data.get('public_key', '').strip()
+        dilithium_public_key = data.get('dilithium_public_key', '').strip()
 
         # Validate username
         valid, error = validate_username(username)
@@ -62,13 +64,18 @@ def register():
         if not valid:
             return jsonify({'error': error}), 400
 
+        # Validate Dilithium public key
+        valid, error = validate_dilithium_public_key(dilithium_public_key)
+        if not valid:
+            return jsonify({'error': error}), 400
+
         # Check if user already exists
         existing_user = User.query.filter_by(username=username).first()
         if existing_user:
             return jsonify({'error': 'Username already exists'}), 400
 
-        # Create new user with public key
-        user = User(username=username, public_key=public_key)
+        # Create new user with both public keys
+        user = User(username=username, public_key=public_key, dilithium_public_key=dilithium_public_key)
         user.set_password(password)
 
         db.session.add(user)

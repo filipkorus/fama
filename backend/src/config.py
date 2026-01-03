@@ -38,3 +38,7 @@ class Config:
     # Logger configuration
     LOGGER_LEVEL = os.getenv('LOGGER_LEVEL', 'DEBUG')
     LOGGER_FORMAT = '%(asctime)s - %(levelname)s - %(filename)s - %(message)s'
+
+    # File upload configuration
+    UPLOAD_FOLDER = os.getenv('UPLOAD_FOLDER', '/app/uploads')
+    MAX_FILE_SIZE = int(os.getenv('MAX_FILE_SIZE', 10 * 1024 * 1024))  # 10 MB default

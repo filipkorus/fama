@@ -72,3 +72,27 @@ def validate_public_key(public_key):
         return True, ""
     except Exception as e:
         return False, f"Invalid Base64 format: {str(e)}"
+
+
+def validate_dilithium_public_key(public_key):
+    """
+    Validate ML-DSA/Dilithium public key format
+    - Must be valid Base64 string
+    - Expected sizes: ~1312 bytes (Dilithium2), ~1952 bytes (Dilithium3), ~2592 bytes (Dilithium5)
+    """
+    if not public_key or not isinstance(public_key, str):
+        return False, "Dilithium public key is required and must be a string"
+
+    try:
+        decoded = base64.b64decode(public_key)
+        key_size = len(decoded)
+
+        # Valid ML-DSA/Dilithium public key sizes
+        valid_sizes = [1312, 1952, 2592]  # Dilithium2, Dilithium3, Dilithium5
+
+        if key_size not in valid_sizes:
+            return False, f"Invalid Dilithium public key size: {key_size} bytes. Expected: {valid_sizes}"
+
+        return True, ""
+    except Exception as e:
+        return False, f"Invalid Base64 format: {str(e)}"
