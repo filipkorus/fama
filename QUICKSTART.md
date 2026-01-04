@@ -54,9 +54,6 @@ docker compose down -v
 1.  **Dostęp:** Otwórz przeglądarkę pod adresem `http://localhost:8080`.
 2.  **Użytkownik:** W panelu bocznym wprowadź nazwę i użyj przycisku "Create User".
 3.  **Wiadomości:** Wpisz tekst w polu wejściowym i zatwierdź przyciskiem "Send Message".
-4.  **Szyfrowanie:**
-    *   Zaznacz opcję "Encrypt message".
-    *   Użyj "Test Encrypt" dla podglądu działania algorytmu.
 
 ### Dostępne serwisy
 
