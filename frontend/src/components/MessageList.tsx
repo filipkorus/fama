@@ -1,6 +1,20 @@
 import React from "react";
-import { Box, List, ListItem, ListItemAvatar, Avatar, ListItemText, Typography, Stack, Chip } from "@mui/material";
+import {
+  Box,
+  List,
+  ListItem,
+  ListItemAvatar,
+  Avatar,
+  ListItemText,
+  Typography,
+  Stack,
+  Chip,
+} from "@mui/material";
 import InsertDriveFileIcon from "@mui/icons-material/InsertDriveFile";
+import {
+  downloadAndVerifyAttachment,
+  FileAttachmentMetadata,
+} from "../services/attachments";
 
 interface DisplayMessage {
   id: string;
@@ -34,6 +48,75 @@ const formatDateTime = (dateInput?: string | number) => {
 };
 
 const MessageList: React.FC<MessageListProps> = ({ messages, username }) => {
+  const [verifiedIds, setVerifiedIds] = React.useState<Record<string, boolean>>(
+    {}
+  );
+
+  const describeVerifyError = (err: any): string => {
+    if (err && err.name === "AttachmentVerifyError") {
+      const code = err.code;
+      switch (code) {
+        case "ENCRYPTED_HASH_MISMATCH":
+          return "Załącznik został naruszony po stronie serwera (hash zaszyfrowanego pliku nie zgadza się).";
+        case "DECRYPT_FAILED":
+          return "Nie udało się odszyfrować załącznika (błędny klucz lub IV).";
+        case "FILE_HASH_MISMATCH":
+          return "Zawartość pliku różni się od oryginału (hash pliku nie zgadza się).";
+        case "SIGNATURE_INVALID":
+          return "Podpis kryptograficzny jest nieprawidłowy (pliku nie podpisał wskazany nadawca).";
+        default:
+          return "Wystąpił nieznany błąd weryfikacji załącznika.";
+      }
+    }
+    return "Nie udało się pobrać lub zweryfikować załącznika.";
+  };
+
+  const renderMessageContent = (message: string) => {
+    try {
+      const parsed = JSON.parse(message);
+
+      if (parsed && parsed.type === "file") {
+        const meta = parsed as FileAttachmentMetadata;
+        const key = meta.filename;
+        const isVerified = !!verifiedIds[key];
+
+        const handleClick = async (e: React.MouseEvent) => {
+          e.preventDefault();
+          try {
+            const result = await downloadAndVerifyAttachment(meta);
+            setVerifiedIds((prev) => ({ ...prev, [key]: true }));
+
+            const url = URL.createObjectURL(result.blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = result.filename;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            URL.revokeObjectURL(url);
+          } catch (err: any) {
+            console.error("[Attachment] Failed to download/verify:", err);
+            alert(describeVerifyError(err));
+          }
+        };
+
+        return (
+          <span onClick={handleClick} style={{ cursor: "pointer" }}>
+            📎 {meta.original_filename || "Załącznik"} (
+            {Math.round((meta.original_size || 0) / 1024)} kB)
+            <br />
+            {isVerified && (
+              <span style={{ color: "#00ff00" }}>podpis zweryfikowany</span>
+            )}
+          </span>
+        );
+      }
+    } catch {
+    }
+
+    return <>{message}</>;
+  };
+
   return (
     <Box
       sx={{
@@ -110,7 +193,7 @@ const MessageList: React.FC<MessageListProps> = ({ messages, username }) => {
                         variant="body2"
                         sx={{ color: "#ffbfff", fontWeight: 400, wordBreak: "break-word" }}
                         >
-                        {m.text}
+                        {renderMessageContent(m.text)}
                         </Typography>
                     </Box>
                   </Box>

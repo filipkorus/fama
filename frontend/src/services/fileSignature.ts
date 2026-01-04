@@ -29,7 +29,6 @@ export interface FileSignaturePayload {
 async function getMLDSA(): Promise<Awaited<ReturnType<typeof createMLDSA65>>> {
   if (!mldsaInstance) {
     mldsaInstance = await createMLDSA65();
-    console.log('[ML-DSA/liboqs] ML-DSA-65 instance created');
   }
   return mldsaInstance;
 }
@@ -39,8 +38,6 @@ async function getMLDSA(): Promise<Awaited<ReturnType<typeof createMLDSA65>>> {
  */
 export async function generateDilithiumKeypair(): Promise<DilithiumKeypair> {
   try {
-    console.log('[ML-DSA/liboqs] Generating keypair (ML-DSA-65)...');
-
     const sig = await getMLDSA();
     const { publicKey, secretKey } = sig.generateKeyPair();
 
@@ -66,7 +63,6 @@ export function storeDilithiumKeys(publicKey: string, privateKey: string): void 
       window.localStorage.setItem(DIL_PRIV_KEY_STORAGE, privateKey);
       window.localStorage.setItem(DIL_META_CREATED, new Date().toISOString());
       window.localStorage.setItem(DIL_META_ALGO, DIL_ALGO);
-      console.log('[ML-DSA/liboqs] Keys stored in localStorage');
     }
   } catch (error) {
     console.error('[ML-DSA/liboqs] Failed to store keys:', error);
@@ -121,10 +117,6 @@ export async function signFile(file: File): Promise<FileSignaturePayload> {
 
   const privKey = base64ToBuffer(keys.privateKey);
   const pubKey = base64ToBuffer(keys.publicKey);
-
-  console.log('[ML-DSA/liboqs] privKey length:', privKey.length);
-  console.log('[ML-DSA/liboqs] pubKey length:', pubKey.length);
-
   const sig = await getMLDSA();
   const hashBytes = await computeFileHash(file);
   const signatureBytes = sig.sign(hashBytes, privKey);

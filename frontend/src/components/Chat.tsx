@@ -108,10 +108,7 @@ export const Chat: React.FC<ChatProps> = ({ to: toProp }) => {
     const container = e.currentTarget;
 
     if (container.scrollTop === 0 && !loadingHistory && currentMessages.length > 0) {
-      console.log("[Chat] Scrolled to top, loading more history...");
-      
       setLoadingHistory(true);
-      
       prevScrollHeightRef.current = container.scrollHeight;
 
       if (targetUserId) {
@@ -130,7 +127,7 @@ export const Chat: React.FC<ChatProps> = ({ to: toProp }) => {
       setMessageInput("");
       setAttachments([]);
     } catch (error) {
-      console.error("Failed to send message:", error);
+      console.error("[Chat] Failed to send message:", error);
     }
   };
 
@@ -138,13 +135,10 @@ export const Chat: React.FC<ChatProps> = ({ to: toProp }) => {
     if (!targetUser || !targetUserId || !targetUser.public_key) return;
 
     try {
-      console.log('[Attachment] Preparing to send file:', file.name, file.size);
-
       const fileArrayBuffer = await file.arrayBuffer() as ArrayBuffer;
       const fileBytes = new Uint8Array(fileArrayBuffer);
 
       const { hashBytes, signatureBytes, publicKeyBytes } = await signFileRaw(fileBytes);
-      console.log('[Attachment] ML-DSA signature bytes length:', signatureBytes.length);
 
       const metadata = {
         filename: file.name,
@@ -155,7 +149,6 @@ export const Chat: React.FC<ChatProps> = ({ to: toProp }) => {
 
       // RAW_PAYLOAD = [SigLen|MetaLen|Meta|Sig|File]
       const rawPayload = packRawFilePayload(signatureBytes, metadata, fileBytes);
-      console.log('[Attachment] RAW payload length:', rawPayload.length);
 
       // Jednorazowy klucz i IV dla AES-GCM
       const fileKey = crypto.getRandomValues(new Uint8Array(32)); // 256-bit
@@ -163,7 +156,6 @@ export const Chat: React.FC<ChatProps> = ({ to: toProp }) => {
 
       // Szyfrowanie RAW_PAYLOAD
       const encryptedBlob = await encryptFilePayload(fileKey, fileIV, rawPayload);
-      console.log('[Attachment] Encrypted blob length:', encryptedBlob.length);
 
       // Upload zaszyfrowanego blobu na backend jako 'file'
       const formData = new FormData();
@@ -173,7 +165,6 @@ export const Chat: React.FC<ChatProps> = ({ to: toProp }) => {
 
       const uploadResponse = await api.post('/files/upload', formData);
       const uploaded = uploadResponse.data as any;
-      console.log('[Attachment] Upload response:', uploaded);
 
       // backend: { url, filename, size, hash, uploaded_at }
       const attachmentMetadata = {
@@ -197,7 +188,12 @@ export const Chat: React.FC<ChatProps> = ({ to: toProp }) => {
 
       const metadataText = JSON.stringify(attachmentMetadata);
 
-      await sendMessage(metadataText, targetUserId, targetUser.public_key);
+      await sendMessage(
+        metadataText,
+        targetUserId,
+        targetUser.public_key,
+        'attachment'
+      );
       setAttachments((prev) => prev.filter((f) => f !== file));
       if (messageInput.trim().length > 0) {
         await handleSend();

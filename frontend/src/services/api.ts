@@ -7,10 +7,9 @@ export const api = axios.create({
   withCredentials: true,
 });
 
-// Add request interceptor for logging
+// Add request interceptor
 api.interceptors.request.use(
   (config) => {
-    console.log('API Request:', config.method?.toUpperCase(), config.url);
 
     const token = getStoredToken();
     if (token) {
@@ -30,11 +29,10 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// Add response interceptor for error handling + refresh
+// Add response interceptor
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
-    console.error('API Error:', error.response?.data || error.message)
 
     const originalRequest: any = error.config
 
@@ -58,7 +56,6 @@ api.interceptors.response.use(
 
         return api(originalRequest)
       } catch (refreshError) {
-        console.error('Token refresh failed:', refreshError)
         clearAuthData()
         window.location.href = '/login'
       }

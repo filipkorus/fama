@@ -19,8 +19,6 @@ export async function generateMLKEMKeypair(): Promise<{
   privateKey: string;
 }> {
   try {
-    console.log('Generating ML-KEM (Kyber768) keypair...');
-    
     // Create ML-KEM768 instance
     const mlkem = new MlKem768();
     
@@ -72,7 +70,6 @@ export function toBase64(buffer: Uint8Array): string {
     }
     
     const base64 = btoa(binary);
-    console.log(`Base64 encoding: ${buffer.length} bytes → ${base64.length} chars`);
     return base64;
   } catch (error) {
     console.error('Base64 encoding failed:', error);
@@ -110,8 +107,6 @@ export function storeKeysLocally(publicKey: string, privateKey: string): void {
       // Store metadata
       window.localStorage.setItem('mlkem_key_generated_at', new Date().toISOString());
       window.localStorage.setItem('mlkem_key_algorithm', 'Kyber768');
-      
-      console.log('Keys stored in localStorage successfully');
     }
   } catch (error) {
     console.error('Failed to store keys in localStorage:', error);
@@ -156,8 +151,6 @@ export function clearStoredKeys(): void {
       window.localStorage.removeItem('mlkem_private_key');
       window.localStorage.removeItem('mlkem_key_generated_at');
       window.localStorage.removeItem('mlkem_key_algorithm');
-      
-      console.log('Stored keys cleared from localStorage');
     }
   } catch (error) {
     console.error('Failed to clear keys from localStorage:', error);

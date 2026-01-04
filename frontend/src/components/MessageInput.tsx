@@ -104,7 +104,7 @@ const MessageInput: React.FC<MessageInputProps> = ({
                   onClick={onAttachClick}
                   disabled={disabled}
                   edge="end"
-                  aria-label="attach"
+                  aria-label="attach file"
                   sx={{
                     color: "#ff4fff",
                     "&.Mui-disabled": { color: "rgba(255,255,255,0.3)" }
@@ -121,7 +121,7 @@ const MessageInput: React.FC<MessageInputProps> = ({
           color="primary"
           onClick={handleSendClick}
           disabled={!canSend}
-          aria-label="send"
+          aria-label="send message"
           sx={{
             bgcolor: canSend ? "#a020f0" : "rgba(160, 32, 240, 0.3)",
             color: "#fff",
@@ -156,6 +156,9 @@ const MessageInput: React.FC<MessageInputProps> = ({
       <input
         ref={fileInputRef}
         type="file"
+        id="file-input"
+        aria-label="Upload file attachment"
+        title="Upload file attachment"
         style={{ display: "none" }}
         multiple
         onChange={handleFileChange}
