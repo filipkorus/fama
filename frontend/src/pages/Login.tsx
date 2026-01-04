@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
-import { initializeAuth, storeAuthData } from '../services/auth';
+import { initializeAuth, storeAuthData, getStoredToken } from '../services/auth';
 import '../styles.css';
 import { generateDilithiumKeypair, storeDilithiumKeys, retrieveDilithiumKeys } from '../services/fileSignature';
 
@@ -12,6 +12,13 @@ export const Login = () => {
   const [loading, setLoading] = useState(false);
 
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const token = getStoredToken();
+    if (token) {
+      navigate('/chat', { replace: true });
+    }
+  }, [navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
