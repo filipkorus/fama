@@ -2,8 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
 import { initializeAuth, storeAuthData, getStoredToken } from '../services/auth';
+import { retrieveKeysLocally } from '../services/crypto';
 import '../styles.css';
-import { generateDilithiumKeypair, storeDilithiumKeys, retrieveDilithiumKeys } from '../services/fileSignature';
+import { retrieveDilithiumKeys } from '../services/fileSignature';
 
 export const Login = () => {
   const [usernameInput, setUsernameInput] = useState('');
@@ -35,6 +36,22 @@ export const Login = () => {
     try {
       setLoading(true);
 
+      // Check if encryption keys exist locally
+      const mlkemKeys = retrieveKeysLocally();
+      const dilithiumKeys = retrieveDilithiumKeys();
+
+      if (!mlkemKeys.publicKey || !mlkemKeys.privateKey) {
+        setError('Brak kluczy szyfrujących (ML-KEM). Zaloguj się z urządzenia, na którym utworzono konto, lub utwórz nowe konto.');
+        setLoading(false);
+        return;
+      }
+
+      if (!dilithiumKeys) {
+        setError('Brak kluczy podpisujących (ML-DSA). Zaloguj się z urządzenia, na którym utworzono konto, lub utwórz nowe konto.');
+        setLoading(false);
+        return;
+      }
+
       // POST /api/auth/login  (baseURL = `${API_URL}/api`)
       const response = await api.post('/auth/login', {
         username: u,
@@ -47,20 +64,6 @@ export const Login = () => {
       if (token) {
         storeAuthData(token, u);
         await initializeAuth(token);
-
-        const existing = retrieveDilithiumKeys();
-        if (!existing) {
-          try {
-            console.log('[Login] No Dilithium keys found, generating...');
-            const { publicKey, privateKey } = await generateDilithiumKeypair();
-            storeDilithiumKeys(publicKey, privateKey);
-            console.log('[Login] Dilithium keys generated & stored');
-          } catch (e) {
-            console.error('[Login] Failed to generate Dilithium keys:', e);
-          }
-        } else {
-          console.log('[Login] Dilithium keys already present in localStorage');
-        }
       }
 
       navigate('/chat');
