@@ -150,7 +150,7 @@ const MessageInput: React.FC<MessageInputProps> = ({
           fullWidth
           multiline
           maxRows={4}
-          placeholder="Type a message..."
+          placeholder="Napisz wiadomość..."
           value={messageInput}
           onChange={(e) => setMessageInput(e.target.value)}
           disabled={disabled}
@@ -193,6 +193,7 @@ const MessageInput: React.FC<MessageInputProps> = ({
                   disabled={disabled}
                   edge="end"
                   aria-label="attach file"
+                  title="Przeciągnij pliki tutaj"
                   sx={{
                     color: "#ff4fff",
                     "&.Mui-disabled": { color: "rgba(255,255,255,0.3)" }

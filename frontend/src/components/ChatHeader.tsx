@@ -30,7 +30,7 @@ const ChatHeader: React.FC<ChatHeaderProps> = ({ username, isConnected, onLogout
       <div style={{ display: "flex", alignItems: "center", gap: "20px" }}>
         {username && (
           <div style={{ fontSize: "14px", color: "#999" }}>
-            Logged in as: <strong>{username}</strong>
+            Zalogowano jako: <strong>{username}</strong>
           </div>
         )}
         <div
@@ -43,7 +43,7 @@ const ChatHeader: React.FC<ChatHeaderProps> = ({ username, isConnected, onLogout
             fontWeight: "bold",
           }}
         >
-          {isConnected ? "🟢 Connected" : "🔴 Disconnected"}
+          {isConnected ? "🟢 Połączono" : "🔴 Rozłączono"}
         </div>
         <button
           onClick={onLogout}
@@ -57,7 +57,7 @@ const ChatHeader: React.FC<ChatHeaderProps> = ({ username, isConnected, onLogout
             fontSize: "14px",
           }}
         >
-          Logout
+          Wyloguj się
         </button>
       </div>
     </header>

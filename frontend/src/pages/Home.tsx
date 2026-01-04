@@ -15,11 +15,11 @@ export default function Home() {
           </div>
         </header>
         <main className="hero">
-          <h1 className="title">Welcome back!</h1>
-          <p className="subtitle">You are already logged in. Go to chat to start messaging.</p>
+          <h1 className="title">Cześć!</h1>
+          <p className="subtitle">Jesteś już zalogowany. Przejdź do czatu, aby rozpocząć rozmowę.</p>
           <div className="cta-row">
             <button className="btn primary" onClick={() => navigate('/chat')}>
-              Go to Chat
+              Przejdź do czatu
             </button>
           </div>
         </main>

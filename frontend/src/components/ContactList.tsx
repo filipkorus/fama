@@ -149,7 +149,7 @@ const ContactList: React.FC<ContactListProps> = ({
       {recentUsers.length > 0 && (
         <>
           <ListSubheader sx={{ bgcolor: 'transparent', color: '#a020f0', fontWeight: 'bold', fontSize: '0.75rem', lineHeight: '30px' }}>
-            RECENT CHATS
+            OSTATNIE KONWERSACJE
           </ListSubheader>
           {recentUsers.map(u => renderUserItem(u, true))}
         </>
@@ -159,7 +159,7 @@ const ContactList: React.FC<ContactListProps> = ({
         <>
            {recentUsers.length > 0 && <Divider sx={{ my: 1, borderColor: 'rgba(255,255,255,0.1)' }} />}
            <ListSubheader sx={{ bgcolor: 'transparent', color: 'rgba(255,255,255,0.5)', fontWeight: 'bold', fontSize: '0.75rem', lineHeight: '30px' }}>
-            AVAILABLE CONTACTS
+            DOSTĘPNE KONTAKTY
           </ListSubheader>
           {availableUsers.map(u => renderUserItem(u, false))}
         </>
@@ -168,7 +168,7 @@ const ContactList: React.FC<ContactListProps> = ({
       {recentUsers.length === 0 && availableUsers.length === 0 && (
         <Box sx={{ p: 4, textAlign: 'center', color: 'rgba(255,255,255,0.3)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
             <ChatBubbleOutlineIcon sx={{ fontSize: 40, opacity: 0.5 }} />
-            <Typography variant="body2">No contacts found</Typography>
+            <Typography variant="body2">Brak dostępnych kontaktów</Typography>
         </Box>
       )}
     </List>
