@@ -51,13 +51,28 @@ api.interceptors.response.use(
         const username = localStorage.getItem('username') || ''
         storeAuthData(newToken, username)
 
+        api.defaults.headers.common['Authorization'] = `Bearer ${newToken}`
+
         originalRequest.headers = originalRequest.headers || {}
         originalRequest.headers['Authorization'] = `Bearer ${newToken}`
+
+        const { socket } = await import('./socket')
+        if (socket && !socket.connected) {
+          (socket as any).auth = { token: `Bearer ${newToken}` }
+          socket.connect()
+        }
 
         return api(originalRequest)
       } catch (refreshError) {
         clearAuthData()
-        window.location.href = '/login'
+        const { socket } = await import('./socket')
+        if (socket?.connected) {
+          socket.disconnect()
+        }
+
+        if (!window.location.pathname.includes('/login') && !window.location.pathname.includes('/register')) {
+          window.location.href = '/login'
+        }
       }
     }
 

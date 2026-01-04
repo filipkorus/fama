@@ -1,12 +1,12 @@
 import React from 'react';
-import { 
-  List, 
-  ListItemButton, 
-  ListItemText, 
-  ListItemAvatar, 
-  Avatar, 
-  Typography, 
-  Box, 
+import {
+  List,
+  ListItemButton,
+  ListItemText,
+  ListItemAvatar,
+  Avatar,
+  Typography,
+  Box,
   Divider,
   ListSubheader
 } from '@mui/material';
@@ -25,11 +25,11 @@ interface ContactListProps {
   noPaper?: boolean;
 }
 
-const ContactList: React.FC<ContactListProps> = ({ 
-  selected, 
-  recentUsers, 
-  availableUsers, 
-  messagesByUser, 
+const ContactList: React.FC<ContactListProps> = ({
+  selected,
+  recentUsers,
+  availableUsers,
+  messagesByUser,
 }) => {
   const navigate = useNavigate();
 
@@ -39,26 +39,24 @@ const ContactList: React.FC<ContactListProps> = ({
 
   const renderUserItem = (user: User, isRecent: boolean) => {
     const isSelected = selected === user.username;
-    
+
     const userMessages = messagesByUser[String(user.id)] || [];
     const lastLocalMessage = userMessages.length > 0 ? userMessages[userMessages.length - 1] : null;
-    
+
     let snippet = "";
     let timeToDisplay = null;
 
-    if (isRecent) {
-        if (lastLocalMessage) {
-          snippet = lastLocalMessage.type === 'text' ?
-            lastLocalMessage.message :
-            `📎 ${JSON.parse(lastLocalMessage.message).original_filename || 'Attachment'}`;
-          timeToDisplay = lastLocalMessage.timestamp;
-        } else {
-          snippet = "History available";
-          timeToDisplay = user.last_message_date;
-        }
+    if (lastLocalMessage) {
+      snippet = lastLocalMessage.type === 'text' ?
+        lastLocalMessage.message :
+        `📎 ${JSON.parse(lastLocalMessage.message).original_filename || 'Attachment'}`;
+      timeToDisplay = lastLocalMessage.timestamp;
+    } else if (user.last_message_date) {
+      snippet = "Historia dostępna";
+      timeToDisplay = user.last_message_date;
     } else {
-        snippet = "Tap to start chatting";
-        timeToDisplay = null;
+      snippet = "Kliknij, aby rozpocząć rozmowę";
+      timeToDisplay = null;
     }
 
     if (snippet.length > 30) snippet = snippet.substring(0, 30) + "...";
@@ -83,8 +81,8 @@ const ContactList: React.FC<ContactListProps> = ({
         }}
       >
         <ListItemAvatar>
-          <Avatar 
-            sx={{ 
+          <Avatar
+            sx={{
                 bgcolor: isSelected ? "#a020f0" : (isRecent ? "#555" : "transparent"),
                 color: "#fff",
                 border: isRecent ? 'none' : '1px solid rgba(255,255,255,0.2)'
@@ -97,16 +95,16 @@ const ContactList: React.FC<ContactListProps> = ({
             )}
           </Avatar>
         </ListItemAvatar>
-        
+
         <ListItemText
           primary={
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <Typography 
-                    variant="body1" 
-                    component="span" 
-                    sx={{ 
-                        fontWeight: isSelected || isRecent ? 600 : 400, 
-                        color: '#fff' 
+                <Typography
+                    variant="body1"
+                    component="span"
+                    sx={{
+                        fontWeight: isSelected || isRecent ? 600 : 400,
+                        color: '#fff'
                     }}
                 >
                     {user.username}
@@ -119,9 +117,9 @@ const ContactList: React.FC<ContactListProps> = ({
             </Box>
           }
           secondary={
-            <Typography 
-                variant="body2" 
-                sx={{ 
+            <Typography
+                variant="body2"
+                sx={{
                     color: isSelected ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.4)',
                     fontSize: '0.8rem',
                     fontStyle: !isRecent ? 'italic' : 'normal'

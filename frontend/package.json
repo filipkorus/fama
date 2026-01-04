@@ -17,7 +17,6 @@
     "@emotion/styled": "^11.14.1",
     "@mui/icons-material": "^7.3.5",
     "@mui/material": "^7.3.5",
-    "@noble/post-quantum": "^0.5.4",
     "@openforge-sh/liboqs": "^0.14.3",
     "axios": "^1.6.2",
     "mlkem": "^2.5.0",

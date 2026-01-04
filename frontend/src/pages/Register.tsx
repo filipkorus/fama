@@ -153,7 +153,7 @@ export const Register = () => {
             id="username"
             name="username"
             type="text"
-            placeholder="your_username"
+            placeholder="Your username"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
           />

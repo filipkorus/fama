@@ -1,23 +1,103 @@
 import { api } from './api'
 import { socket } from './socket'
+import axios from 'axios'
+import { API_URL } from '../config'
 
 const TIMEOUT_MS = 5000
 
 /**
+ * Checks if a JWT token is expired or about to expire soon
+ * @param token JWT token to check
+ * @returns true if token is expired or expires within 30 seconds
+ */
+const isTokenExpired = (token: string): boolean => {
+  try {
+    const base64Url = token.split('.')[1]
+    if (!base64Url) return true
+
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/')
+    const payload = JSON.parse(atob(base64))
+
+    if (!payload.exp) return true
+
+    // Consider token expired if it expires within 30 seconds
+    const expirationTime = payload.exp * 1000
+    const currentTime = Date.now()
+    const bufferTime = 30 * 1000 // 30 seconds buffer
+
+    return expirationTime - currentTime < bufferTime
+  } catch (e) {
+    console.error('Failed to parse token:', e)
+    return true
+  }
+}
+
+/**
+ * Attempts to refresh the access token using the refresh token cookie
+ * @returns New access token or null if refresh failed
+ */
+export const refreshAccessToken = async (): Promise<string | null> => {
+  try {
+    const { data } = await axios.post(
+      `${API_URL}/api/auth/refresh`,
+      {},
+      { withCredentials: true }
+    )
+
+    const newToken = data.access_token as string
+    if (newToken) {
+      const username = getStoredUsername() || ''
+      storeAuthData(newToken, username)
+      return newToken
+    }
+    return null
+  } catch (error) {
+    console.error('Failed to refresh token:', error)
+    return null
+  }
+}
+
+/**
+ * Validates and refreshes token if needed before use
+ * @param token Current token
+ * @returns Valid token or null if validation/refresh failed
+ */
+export const ensureValidToken = async (token: string): Promise<string | null> => {
+  if (!token) return null
+
+  if (isTokenExpired(token)) {
+    console.log('Token expired, attempting refresh...')
+    return await refreshAccessToken()
+  }
+
+  return token
+}
+
+/**
  * Initializes authentication after a token is obtained
  * Sets up API headers and connects WebSocket with authentication
+ * Automatically refreshes expired tokens before connecting
  */
 export const initializeAuth = async (token: string): Promise<void> => {
+  // Validate and refresh token if needed
+  const validToken = await ensureValidToken(token)
+
+  if (!validToken) {
+    console.warn('Failed to obtain valid token')
+    clearAuthData()
+    throw new Error('Invalid or expired token')
+  }
+
   try {
     // Set API authorization header
-    api.defaults.headers.common['Authorization'] = `Bearer ${token}`
+    api.defaults.headers.common['Authorization'] = `Bearer ${validToken}`
   } catch (err) {
     console.warn('Failed to set default API authorization header', err)
   }
 
   try {
     // Set Socket.IO authentication
-    const bearer = `Bearer ${token}`
+    const bearer = `Bearer ${validToken}`
     ;(socket as any).auth = { token: bearer }
 
     // Connect socket if not already connected
@@ -29,6 +109,7 @@ export const initializeAuth = async (token: string): Promise<void> => {
     await waitForSocketConnection()
   } catch (err) {
     console.warn('Failed to initialize socket connection', err)
+    throw err
   }
 }
 

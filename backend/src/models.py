@@ -189,31 +189,61 @@ class Message(db.Model):
 
     @staticmethod
     def query_recent_and_available_users(sender_id):
-        recent_messages = (
+        sent_query = (
             db.session.query(
-                Message.recipient_id,
-                User.username,
-                User.public_key,
-                User.dilithium_public_key,
+                Message.recipient_id.label('partner_id'),
                 db.func.max(Message.created_at).label('last_message_date')
             )
-            .join(User, User.id == Message.recipient_id)
             .filter(Message.sender_id == sender_id)
-            .group_by(Message.recipient_id, User.username, User.public_key, User.dilithium_public_key)
-            .order_by(db.func.max(Message.created_at).desc())
+            .group_by(Message.recipient_id)
             .all()
         )
 
-        recent_users = [
-            {
-                'id': recipient_id,
-                'username': username,
-                'public_key': public_key,
-                'dilithium_public_key': dilithium_public_key,
-                'last_message_date': to_utc_z(last_message_date) if last_message_date else None
-            }
-            for recipient_id, username, public_key, dilithium_public_key, last_message_date in recent_messages
-        ]
+        received_query = (
+            db.session.query(
+                Message.sender_id.label('partner_id'),
+                db.func.max(Message.created_at).label('last_message_date')
+            )
+            .filter(Message.recipient_id == sender_id)
+            .group_by(Message.sender_id)
+            .all()
+        )
+
+        # Połącz i znajdź najnowszą datę dla każdego partnera
+        partner_dates = {}
+        for partner_id, last_date in sent_query:
+            partner_dates[partner_id] = last_date
+
+        for partner_id, last_date in received_query:
+            if partner_id in partner_dates:
+                # Wybierz nowszą datę
+                if last_date > partner_dates[partner_id]:
+                    partner_dates[partner_id] = last_date
+            else:
+                partner_dates[partner_id] = last_date
+
+        # Pobierz dane użytkowników dla partnerów
+        if partner_dates:
+            recent_users_query = (
+                db.session.query(User)
+                .filter(User.id.in_(partner_dates.keys()))
+                .all()
+            )
+
+            recent_users = [
+                {
+                    'id': user.id,
+                    'username': user.username,
+                    'public_key': user.public_key,
+                    'dilithium_public_key': user.dilithium_public_key,
+                    'last_message_date': to_utc_z(partner_dates[user.id]) if partner_dates[user.id] else None
+                }
+                for user in recent_users_query
+            ]
+
+            recent_users.sort(key=lambda x: x['last_message_date'] or '', reverse=True)
+        else:
+            recent_users = []
 
         all_users = db.session.query(User.id, User.username, User.public_key, User.dilithium_public_key).filter(User.is_active == True).all()
 

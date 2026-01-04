@@ -10,12 +10,20 @@ import ProtectedRoute from './components/ProtectedRoute'
 
 function App() {
   useEffect(() => {
-    const token = getStoredToken()
-    if (token) {
-      initializeAuth(token).catch((err) => {
-        console.warn('Failed to initialize auth on app start:', err)
-      })
+    const initAuth = async () => {
+      const token = getStoredToken()
+      if (token) {
+        try {
+          await initializeAuth(token)
+        } catch (err) {
+          console.warn('Failed to initialize auth on app start:', err)
+          // Token is invalid and couldn't be refreshed
+          // User will be redirected by ProtectedRoute if they try to access protected pages
+        }
+      }
     }
+
+    initAuth()
   }, [])
   return (
     <Router>

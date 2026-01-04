@@ -97,7 +97,7 @@ export const Login = () => {
             id="username"
             name="username"
             type="text"
-            placeholder="your_username"
+            placeholder="Your username"
             value={usernameInput}
             onChange={(e) => setUsernameInput(e.target.value)}
           />
