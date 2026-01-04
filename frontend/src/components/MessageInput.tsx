@@ -3,6 +3,7 @@ import { Box, TextField, IconButton, InputAdornment, Stack, Chip } from "@mui/ma
 import AttachFileIcon from "@mui/icons-material/AttachFile";
 import SendIcon from "@mui/icons-material/Send";
 import InsertDriveFileIcon from "@mui/icons-material/InsertDriveFile";
+import { MAX_FILE_SIZE } from '../config';
 
 interface MessageInputProps {
   messageInput: string;
@@ -30,7 +31,28 @@ const MessageInput: React.FC<MessageInputProps> = ({
   const handleFileChange: React.ChangeEventHandler<HTMLInputElement> = (e) => {
     const files = e.target.files;
     if (!files) return;
-    setAttachments((prev: File[]) => [...prev, ...Array.from(files)]);
+    
+    const validFiles: File[] = [];
+    const invalidFiles: string[] = [];
+    const maxSizeMB = (MAX_FILE_SIZE / (1024 * 1024)).toFixed(0);
+    
+    Array.from(files).forEach(file => {
+      if (file.size > MAX_FILE_SIZE) {
+        const sizeMB = (file.size / (1024 * 1024)).toFixed(2);
+        invalidFiles.push(`${file.name} (${sizeMB} MB)`);
+      } else {
+        validFiles.push(file);
+      }
+    });
+    
+    if (invalidFiles.length > 0) {
+      alert(`Następujące pliki są zbyt duże (maksymalny rozmiar: ${maxSizeMB} MB):\n${invalidFiles.join('\n')}`);
+    }
+    
+    if (validFiles.length > 0) {
+      setAttachments((prev: File[]) => [...prev, ...validFiles]);
+    }
+    
     e.currentTarget.value = "";
   };
 
@@ -42,7 +64,7 @@ const MessageInput: React.FC<MessageInputProps> = ({
     if (!canSend) return;
 
     if (attachments.length > 0 && onSendAttachment) {
-      onSendAttachment(attachments[0]);
+      attachments.forEach(file => onSendAttachment(file));
     } else {
       onSend();
     }
@@ -74,7 +96,10 @@ const MessageInput: React.FC<MessageInputProps> = ({
               e.preventDefault();
               if (canSend) {
                 if (attachments.length > 0 && onSendAttachment) {
-                  onSendAttachment(attachments[0]);
+                  // Send each attachment as a separate message
+                  attachments.forEach(file => {
+                    onSendAttachment(file);
+                  });
                 } else {
                   onSend();
                 }

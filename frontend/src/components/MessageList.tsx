@@ -33,7 +33,13 @@ interface MessageListProps {
 const formatDateTime = (dateInput?: string | number) => {
   if (!dateInput) return "";
   
-  const date = new Date(dateInput);
+  let normalizedDate = dateInput;
+  
+  if (typeof dateInput === 'string' && !dateInput.endsWith('Z') && !/[+-]\d{2}:?\d{2}/.test(dateInput)) {
+    normalizedDate = `${dateInput}Z`;
+  }
+  
+  const date = new Date(normalizedDate);
   
   if (isNaN(date.getTime())) return "";
 

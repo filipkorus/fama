@@ -48,11 +48,13 @@ const ContactList: React.FC<ContactListProps> = ({
 
     if (isRecent) {
         if (lastLocalMessage) {
-            snippet = lastLocalMessage.message || "Sent an attachment";
-            timeToDisplay = lastLocalMessage.timestamp;
+          snippet = lastLocalMessage.type === 'text' ?
+            lastLocalMessage.message :
+            `📎 ${JSON.parse(lastLocalMessage.message).original_filename || 'Attachment'}`;
+          timeToDisplay = lastLocalMessage.timestamp;
         } else {
-            snippet = "History available";
-            timeToDisplay = user.last_message_date;
+          snippet = "History available";
+          timeToDisplay = user.last_message_date;
         }
     } else {
         snippet = "Tap to start chatting";

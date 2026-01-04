@@ -8,6 +8,7 @@ import ChatHeader from "./ChatHeader";
 import MessageList from "./MessageList";
 import MessageInput from "./MessageInput";
 import { api } from '../services/api';
+import { MAX_FILE_SIZE } from '../config';
 import { packRawFilePayload, encryptFilePayload, toBase64 } from '../services/crypto';
 import { signFileRaw } from '../services/fileSignature';
 import { ensureUint8Array } from '../utils/buffer';
@@ -40,6 +41,7 @@ export const Chat: React.FC<ChatProps> = ({ to: toProp }) => {
   const [messageInput, setMessageInput] = useState("");
   const [attachments, setAttachments] = useState<File[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   
   const fileInputRef = useRef<HTMLInputElement>(null!);
   const scrollRef = useRef<HTMLDivElement | null>(null);
@@ -134,6 +136,7 @@ export const Chat: React.FC<ChatProps> = ({ to: toProp }) => {
   const handleSendAttachment = async (file: File) => {
     if (!targetUser || !targetUserId || !targetUser.public_key) return;
 
+    setIsUploading(true);
     try {
       const fileArrayBuffer = await file.arrayBuffer() as ArrayBuffer;
       const fileBytes = new Uint8Array(fileArrayBuffer);
@@ -156,6 +159,15 @@ export const Chat: React.FC<ChatProps> = ({ to: toProp }) => {
 
       // Szyfrowanie RAW_PAYLOAD
       const encryptedBlob = await encryptFilePayload(fileKey, fileIV, rawPayload);
+
+      // Check if encrypted blob size exceeds limit
+      if (encryptedBlob.byteLength > MAX_FILE_SIZE) {
+        const sizeMB = (encryptedBlob.byteLength / (1024 * 1024)).toFixed(2);
+        const maxSizeMB = (MAX_FILE_SIZE / (1024 * 1024)).toFixed(0);
+        alert(`Zaszyfrowany plik jest zbyt duży (${sizeMB} MB). Maksymalny rozmiar to ${maxSizeMB} MB.`);
+        setIsUploading(false);
+        return;
+      }
 
       // Upload zaszyfrowanego blobu na backend jako 'file'
       const formData = new FormData();
@@ -194,12 +206,28 @@ export const Chat: React.FC<ChatProps> = ({ to: toProp }) => {
         targetUser.public_key,
         'attachment'
       );
-      setAttachments((prev) => prev.filter((f) => f !== file));
-      if (messageInput.trim().length > 0) {
-        await handleSend();
-      }
-    } catch (error) {
+      
+      setAttachments((prev) => {
+        const newAttachments = prev.filter((f) => f !== file);
+        // If this was the last attachment and there's a text message, send it
+        if (newAttachments.length === 0) {
+          setIsUploading(false);
+          if (messageInput.trim().length > 0) {
+            setTimeout(() => handleSend(), 0);
+          }
+        }
+        return newAttachments;
+      });
+    } catch (error: any) {
       console.error('[Attachment] Failed to send attachment:', error);
+
+      if (error?.response?.status === 413) {
+        alert('Plik jest zbyt duży. Maksymalny rozmiar pliku to 16MB.');
+      } else {
+        alert('Nie udało się wysłać załącznika. Spróbuj ponownie.');
+      }
+
+      setIsUploading(false);
     }
   };
 
@@ -324,7 +352,7 @@ export const Chat: React.FC<ChatProps> = ({ to: toProp }) => {
               onSend={handleSend}
               onSendAttachment={handleSendAttachment}
               fileInputRef={fileInputRef}
-              disabled={!isConnected}
+              disabled={!isConnected || isUploading}
             />
           </Box>
         </Paper>

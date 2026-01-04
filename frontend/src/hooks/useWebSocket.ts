@@ -17,6 +17,7 @@ interface EncryptedMessagePayload {
   session_key_id: number;
   encrypted_content: string;
   nonce: string;
+  message_type: 'text' | 'attachment';
   is_delivered: boolean;
   created_at: string;
 }
@@ -33,9 +34,10 @@ export interface MessageData {
   id?: string | number;
   from?: string;
   to?: string;
-  message?: string;
+  message: string;
   timestamp?: string;
   isIncoming?: boolean;
+  type: 'text' | 'attachment';
 }
 
 interface QueuedMessage {
@@ -130,7 +132,8 @@ export const useWebSocket = () => {
             to: msg.recipient?.username,
             message: "⚠️ Błąd danych (brak ID klucza)",
             timestamp: msg.created_at,
-            isIncoming: msg.sender.id !== userId
+            isIncoming: msg.sender.id !== userId,
+            type: msg.message_type || 'text'
         };
     }
 
@@ -155,7 +158,8 @@ export const useWebSocket = () => {
         to: msg.recipient?.username,
         message: plainText,
         timestamp: msg.created_at,
-        isIncoming: msg.sender.id !== userId
+        isIncoming: msg.sender.id !== userId,
+        type: msg.message_type || 'text'
       };
     } catch (error) {
       console.error(`[E2EE] Decryption failed for msg ${msg.id}`, error);
@@ -163,9 +167,10 @@ export const useWebSocket = () => {
         id: msg.id,
         from: msg.sender.username,
         to: msg.recipient?.username,
-        message: '⚠️ Błąd deszyfracji',
+        message: '⚠️ Błąd odszyfrowania wiadomości',
         timestamp: msg.created_at,
-        isIncoming: msg.sender.id !== userId
+        isIncoming: msg.sender.id !== userId,
+        type: msg.message_type || 'text'
       };
     }
   }, [userId]);
@@ -413,6 +418,7 @@ export const useWebSocket = () => {
         message: text,
         timestamp: new Date().toISOString(),
         isIncoming: false,
+        type: messageType,
       };
 
       setMessagesByUser(prev => {
