@@ -244,7 +244,7 @@ export const useWebSocket = () => {
             );
             saveSessionKey(data.session_key_id, aesKey);
             if (data.sender_id !== userId) {
-                 saveActiveSession(data.sender_id, data.session_key_id);
+                saveActiveSession(data.sender_id, data.session_key_id);
             }
             flushPendingQueue(data.session_key_id);
         } catch (err) {
@@ -349,7 +349,13 @@ export const useWebSocket = () => {
   }, [isConnected, isUsersLoaded, loadUsers]);
 
 
-  const sendMessage = useCallback(async (text: string, recipientId: number, recipientPublicKey: string) => {
+  const sendMessage = useCallback(
+  async (
+    text: string,
+    recipientId: number,
+    recipientPublicKey: string,
+    messageType: 'text' | 'attachment' = 'text'
+  ) => {
     if (!socket.connected || !username) return;
     if (!text.trim() || !recipientId) return;
 
@@ -390,30 +396,36 @@ export const useWebSocket = () => {
     }
 
     try {
-        const { encryptedContent, nonce } = await encryptMessage(aesKey!, text);
-        socket.emit('send_message', {
-            recipient_id: recipientId,
-            session_key_id: keyId,
-            encrypted_content: encryptedContent,
-            nonce: nonce
-        });
-        
-        const optimisticMsg: MessageData = {
-            id: `temp-${Date.now()}`,
-            from: username,
-            to: '...', 
-            message: text,
-            timestamp: new Date().toISOString(),
-            isIncoming: false
-        };
-        
-        setMessagesByUser(prev => {
-            const key = String(recipientId);
-            const existing = prev[key] || [];
-            return { ...prev, [key]: [...existing, optimisticMsg] };
-        });
-    } catch (e) { console.error(e); }
-  }, [username, saveSessionKey, saveActiveSession]);
+      const { encryptedContent, nonce } = await encryptMessage(aesKey!, text);
+
+      socket.emit('send_message', {
+        recipient_id: recipientId,
+        session_key_id: keyId,
+        message_type: messageType,
+        encrypted_content: encryptedContent,
+        nonce: nonce,
+      });
+
+      const optimisticMsg: MessageData = {
+        id: `temp-${Date.now()}`,
+        from: username,
+        to: '...',
+        message: text,
+        timestamp: new Date().toISOString(),
+        isIncoming: false,
+      };
+
+      setMessagesByUser(prev => {
+        const key = String(recipientId);
+        const existing = prev[key] || [];
+        return { ...prev, [key]: [...existing, optimisticMsg] };
+      });
+    } catch (e) {
+      console.error(e);
+    }
+  },
+    [username, saveSessionKey, saveActiveSession]
+  );
 
   return { 
       isConnected, 

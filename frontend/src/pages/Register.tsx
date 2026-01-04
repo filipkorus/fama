@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
 import { initializeAuth, storeAuthData } from '../services/auth';
 import { generateMLKEMKeypair, storeKeysLocally, getStoredKeyInfo } from '../services/crypto';
+import { generateDilithiumKeypair, storeDilithiumKeys } from '../services/fileSignature';
 import '../styles.css';
 
 
@@ -55,7 +56,12 @@ export const Register = () => {
         throw new Error('Key generation returned undefined values');
       }
 
-      console.log('Generated keys - Public:', publicKey ? `${publicKey.substring(0, 50)}...` : 'undefined', 'Private:', privateKey ? `${privateKey.substring(0, 50)}...` : 'undefined');
+      console.log(
+        'Generated keys - Public:',
+        publicKey ? `${publicKey.substring(0, 50)}...` : 'undefined',
+        'Private:',
+        privateKey ? `${privateKey.substring(0, 50)}...` : 'undefined'
+      );
 
       // Store keys in localStorage for persistent memory
       try {
@@ -69,12 +75,35 @@ export const Register = () => {
       const keyInfo = getStoredKeyInfo();
       console.log('Stored key info:', keyInfo);
 
-      // Register user with public key
-      console.log('Sending registration request with public_key:', publicKey ? `${publicKey.substring(0, 50)}...` : 'MISSING');
+      // ===== Dilithium (ML-DSA) keys – generate & store =====
+      console.log('Starting Dilithium key generation...');
+      const dilithium = await generateDilithiumKeypair();
+      if (!dilithium.publicKey || !dilithium.privateKey) {
+        throw new Error('Dilithium key generation returned undefined values');
+      }
+      console.log(
+        'Generated Dilithium keys - Public:',
+        `${dilithium.publicKey.substring(0, 50)}...`,
+        'Private:',
+        `${dilithium.privateKey.substring(0, 50)}...`
+      );
+      try {
+        storeDilithiumKeys(dilithium.publicKey, dilithium.privateKey);
+      } catch (storageError) {
+        console.error('Dilithium storage failed:', storageError);
+        throw storageError;
+      }
+
+      // Register user with ML-KEM + Dilithium public keys
+      console.log(
+        'Sending registration request with public_key:',
+        publicKey ? `${publicKey.substring(0, 50)}...` : 'MISSING'
+      );
       const response = await api.post('/auth/register', {
         username: u,
         password: p,
-        public_key: publicKey
+        public_key: publicKey,
+        dilithium_public_key: dilithium.publicKey,
       });
 
       console.log('Registration successful');

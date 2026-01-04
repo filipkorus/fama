@@ -8,10 +8,11 @@ interface MessageInputProps {
   messageInput: string;
   setMessageInput: (value: string) => void;
   attachments: File[];
-  setAttachments: (files: React.SetStateAction<File[]>) => void;
+  setAttachments: (files: File[] | ((prev: File[]) => File[])) => void;
   onSend: () => void;
-  fileInputRef: React.RefObject<HTMLInputElement>;
+  onSendAttachment?: (file: File) => void;
   disabled?: boolean;
+  fileInputRef: React.RefObject<HTMLInputElement>;
 }
 
 const MessageInput: React.FC<MessageInputProps> = ({
@@ -20,6 +21,7 @@ const MessageInput: React.FC<MessageInputProps> = ({
   attachments,
   setAttachments,
   onSend,
+  onSendAttachment,
   fileInputRef,
   disabled = false,
 }) => {
@@ -34,6 +36,16 @@ const MessageInput: React.FC<MessageInputProps> = ({
 
   const handleRemoveAttachment = (index: number) => {
     setAttachments((prev: File[]) => prev.filter((_, i: number) => i !== index));
+  };
+
+  const handleSendClick = () => {
+    if (!canSend) return;
+
+    if (attachments.length > 0 && onSendAttachment) {
+      onSendAttachment(attachments[0]);
+    } else {
+      onSend();
+    }
   };
 
   const canSend = (messageInput.trim().length > 0 || attachments.length > 0) && !disabled;
@@ -61,7 +73,11 @@ const MessageInput: React.FC<MessageInputProps> = ({
             if (e.key === "Enter" && !e.shiftKey) {
               e.preventDefault();
               if (canSend) {
-                onSend();
+                if (attachments.length > 0 && onSendAttachment) {
+                  onSendAttachment(attachments[0]);
+                } else {
+                  onSend();
+                }
               }
             }
           }}
@@ -77,7 +93,7 @@ const MessageInput: React.FC<MessageInputProps> = ({
               borderColor: "#ff4fff",
             },
             "&.Mui-disabled": {
-               opacity: 0.6
+              opacity: 0.6
             }
           }}
           InputProps={{
@@ -88,7 +104,7 @@ const MessageInput: React.FC<MessageInputProps> = ({
                   onClick={onAttachClick}
                   disabled={disabled}
                   edge="end"
-                  aria-label="attach"
+                  aria-label="attach file"
                   sx={{
                     color: "#ff4fff",
                     "&.Mui-disabled": { color: "rgba(255,255,255,0.3)" }
@@ -103,9 +119,9 @@ const MessageInput: React.FC<MessageInputProps> = ({
 
         <IconButton
           color="primary"
-          onClick={onSend}
+          onClick={handleSendClick}
           disabled={!canSend}
-          aria-label="send"
+          aria-label="send message"
           sx={{
             bgcolor: canSend ? "#a020f0" : "rgba(160, 32, 240, 0.3)",
             color: "#fff",
@@ -140,6 +156,9 @@ const MessageInput: React.FC<MessageInputProps> = ({
       <input
         ref={fileInputRef}
         type="file"
+        id="file-input"
+        aria-label="Upload file attachment"
+        title="Upload file attachment"
         style={{ display: "none" }}
         multiple
         onChange={handleFileChange}

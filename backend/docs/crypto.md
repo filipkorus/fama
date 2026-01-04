@@ -2,6 +2,10 @@
 
 Biblioteka implementująca wymianę kluczy (ML-KEM) i podpisy cyfrowe (ML-DSA) zgodnie ze standardami NIST FIPS.
 
+> [!CAUTION]
+> Ten kod nie jest wykorzystywany w obecnej wersji aplikacji.
+> Cała zawartość katalogu ../src/crypto/* jest wyłączona z użytku.
+
 ## Struktura Modułu
 
 Lokalizacja: `backend/crypto/`

@@ -19,8 +19,6 @@ export async function generateMLKEMKeypair(): Promise<{
   privateKey: string;
 }> {
   try {
-    console.log('Generating ML-KEM (Kyber768) keypair...');
-    
     // Create ML-KEM768 instance
     const mlkem = new MlKem768();
     
@@ -60,7 +58,7 @@ export async function generateMLKEMKeypair(): Promise<{
 /**
  * Convert Uint8Array to Base64 string
  */
-function toBase64(buffer: Uint8Array): string {
+export function toBase64(buffer: Uint8Array): string {
   try {
     // Using the modern approach with btoa and String.fromCharCode
     let binary = '';
@@ -72,7 +70,6 @@ function toBase64(buffer: Uint8Array): string {
     }
     
     const base64 = btoa(binary);
-    console.log(`Base64 encoding: ${buffer.length} bytes → ${base64.length} chars`);
     return base64;
   } catch (error) {
     console.error('Base64 encoding failed:', error);
@@ -110,8 +107,6 @@ export function storeKeysLocally(publicKey: string, privateKey: string): void {
       // Store metadata
       window.localStorage.setItem('mlkem_key_generated_at', new Date().toISOString());
       window.localStorage.setItem('mlkem_key_algorithm', 'Kyber768');
-      
-      console.log('Keys stored in localStorage successfully');
     }
   } catch (error) {
     console.error('Failed to store keys in localStorage:', error);
@@ -156,8 +151,6 @@ export function clearStoredKeys(): void {
       window.localStorage.removeItem('mlkem_private_key');
       window.localStorage.removeItem('mlkem_key_generated_at');
       window.localStorage.removeItem('mlkem_key_algorithm');
-      
-      console.log('Stored keys cleared from localStorage');
     }
   } catch (error) {
     console.error('Failed to clear keys from localStorage:', error);
@@ -201,4 +194,67 @@ export function getStoredKeyInfo(): {
     publicKeySize,
     privateKeySize,
   };
+}
+
+export interface FileMetadata {
+  filename: string;
+  mime_type: string;
+  size: number;
+  timestamp: string;
+}
+
+/**
+ * RAW_PAYLOAD = [SigLen(4B)|MetaLen(4B)|Meta|Sig|File] jako Uint8Array.
+ */
+export function packRawFilePayload(
+  signatureBytes: Uint8Array,
+  metadata: FileMetadata,
+  fileBytes: Uint8Array
+): Uint8Array {
+  const metaJson = JSON.stringify(metadata);
+  const metaBytes = new TextEncoder().encode(metaJson);
+
+  const sigLen = signatureBytes.length;
+  const metaLen = metaBytes.length;
+
+  const header = new Uint8Array(8);
+  const view = new DataView(header.buffer);
+  view.setUint32(0, sigLen, false);
+  view.setUint32(4, metaLen, false);
+
+  const totalLen = 8 + metaLen + sigLen + fileBytes.length;
+  const out = new Uint8Array(totalLen);
+
+  let offset = 0;
+  out.set(header, offset);
+  offset += 8;
+
+  out.set(metaBytes, offset);
+  offset += metaLen;
+
+  out.set(signatureBytes, offset);
+  offset += sigLen;
+
+  out.set(fileBytes, offset);
+
+  return out;
+}
+
+/**
+ * AES-GCM 256-bit encryption dla RAW_PAYLOAD.
+ */
+export async function encryptFilePayload(
+  fileKey: any,
+  iv: any,
+  rawPayload: any
+): Promise<Uint8Array> {
+  const key = await crypto.subtle.importKey('raw', fileKey, { name: 'AES-GCM' }, false, ['encrypt']);
+
+  const encrypted = await crypto.subtle.encrypt(
+    { name: 'AES-GCM', iv },
+    key,
+    rawPayload
+  );
+
+  return new Uint8Array(encrypted as ArrayBuffer);
 }

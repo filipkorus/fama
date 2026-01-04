@@ -11,6 +11,10 @@ RUN npm ci
 # Copy source code
 COPY . .
 
+# Copy liboqs-wasm assets to public directory
+RUN mkdir -p public/dist && \
+    cp node_modules/@openforge-sh/liboqs/dist/* public/dist/
+
 # Build the application
 RUN npm run build
 
