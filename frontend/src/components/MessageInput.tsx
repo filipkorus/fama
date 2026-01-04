@@ -3,6 +3,7 @@ import { Box, TextField, IconButton, InputAdornment, Stack, Chip } from "@mui/ma
 import AttachFileIcon from "@mui/icons-material/AttachFile";
 import SendIcon from "@mui/icons-material/Send";
 import InsertDriveFileIcon from "@mui/icons-material/InsertDriveFile";
+import { MAX_FILE_SIZE } from '../config';
 
 interface MessageInputProps {
   messageInput: string;
@@ -25,13 +26,73 @@ const MessageInput: React.FC<MessageInputProps> = ({
   fileInputRef,
   disabled = false,
 }) => {
+  const [isDragging, setIsDragging] = React.useState(false);
+  
   const onAttachClick = () => fileInputRef.current?.click();
+
+  const validateAndAddFiles = (files: FileList | File[]) => {
+    const validFiles: File[] = [];
+    const invalidFiles: string[] = [];
+    const maxSizeMB = (MAX_FILE_SIZE / (1024 * 1024)).toFixed(0);
+    
+    Array.from(files).forEach(file => {
+      if (file.size > MAX_FILE_SIZE) {
+        const sizeMB = (file.size / (1024 * 1024)).toFixed(2);
+        invalidFiles.push(`${file.name} (${sizeMB} MB)`);
+      } else {
+        validFiles.push(file);
+      }
+    });
+
+    if (invalidFiles.length > 0) {
+      alert(`Następujące pliki są zbyt duże (maksymalny rozmiar: ${maxSizeMB} MB):\n${invalidFiles.join('\n')}`);
+    }
+
+    if (validFiles.length > 0) {
+      setAttachments((prev: File[]) => [...prev, ...validFiles]);
+    }
+  };
 
   const handleFileChange: React.ChangeEventHandler<HTMLInputElement> = (e) => {
     const files = e.target.files;
     if (!files) return;
-    setAttachments((prev: File[]) => [...prev, ...Array.from(files)]);
+    validateAndAddFiles(files);
     e.currentTarget.value = "";
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!disabled) {
+      setIsDragging(true);
+    }
+  };
+
+  const handleDragEnter = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!disabled) {
+      setIsDragging(true);
+    }
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+
+    if (disabled) return;
+
+    const files = e.dataTransfer.files;
+    if (files && files.length > 0) {
+      validateAndAddFiles(files);
+    }
   };
 
   const handleRemoveAttachment = (index: number) => {
@@ -42,7 +103,7 @@ const MessageInput: React.FC<MessageInputProps> = ({
     if (!canSend) return;
 
     if (attachments.length > 0 && onSendAttachment) {
-      onSendAttachment(attachments[0]);
+      attachments.forEach(file => onSendAttachment(file));
     } else {
       onSend();
     }
@@ -53,12 +114,36 @@ const MessageInput: React.FC<MessageInputProps> = ({
   return (
     <>
       <Box
+        onDragOver={handleDragOver}
+        onDragEnter={handleDragEnter}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
         sx={{
           display: "flex",
           gap: 1,
           alignItems: "flex-end",
           px: 3,
           pb: 3,
+          position: "relative",
+          "&::before": isDragging ? {
+            content: '"Upuść pliki tutaj"',
+            position: "absolute",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            bgcolor: "rgba(160, 32, 240, 0.2)",
+            border: "2px dashed #ff4fff",
+            borderRadius: 2,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            color: "#ff4fff",
+            fontSize: "1.2rem",
+            fontWeight: "bold",
+            pointerEvents: "none",
+            zIndex: 10,
+          } : {}
         }}
       >
         <TextField
@@ -74,7 +159,10 @@ const MessageInput: React.FC<MessageInputProps> = ({
               e.preventDefault();
               if (canSend) {
                 if (attachments.length > 0 && onSendAttachment) {
-                  onSendAttachment(attachments[0]);
+                  // Send each attachment as a separate message
+                  attachments.forEach(file => {
+                    onSendAttachment(file);
+                  });
                 } else {
                   onSend();
                 }

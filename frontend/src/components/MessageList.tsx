@@ -32,19 +32,38 @@ interface MessageListProps {
 
 const formatDateTime = (dateInput?: string | number) => {
   if (!dateInput) return "";
-  
-  const date = new Date(dateInput);
-  
+
+  let normalizedDate = dateInput;
+
+  if (typeof dateInput === 'string' && !dateInput.endsWith('Z') && !/[+-]\d{2}:?\d{2}/.test(dateInput)) {
+    normalizedDate = `${dateInput}Z`;
+  }
+
+  const date = new Date(normalizedDate);
+
   if (isNaN(date.getTime())) return "";
 
   const hours = date.getHours().toString().padStart(2, '0');
   const minutes = date.getMinutes().toString().padStart(2, '0');
-  
+
   const day = date.getDate().toString().padStart(2, '0');
   const month = (date.getMonth() + 1).toString().padStart(2, '0');
   const year = date.getFullYear();
 
   return `${hours}:${minutes} ${day}.${month}.${year}`;
+};
+
+const formatFileSize = (bytes: number): string => {
+  if (bytes === 0) return '0 B';
+
+  const k = 1024;
+  const sizes = ['B', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+
+  const size = bytes / Math.pow(k, i);
+  const decimals = i === 0 ? 0 : (size < 10 ? 2 : 1);
+
+  return `${size.toFixed(decimals)} ${sizes[i]}`;
 };
 
 const MessageList: React.FC<MessageListProps> = ({ messages, username }) => {
@@ -103,7 +122,7 @@ const MessageList: React.FC<MessageListProps> = ({ messages, username }) => {
         return (
           <span onClick={handleClick} style={{ cursor: "pointer" }}>
             📎 {meta.original_filename || "Załącznik"} (
-            {Math.round((meta.original_size || 0) / 1024)} kB)
+            {formatFileSize(meta.original_size || 0)})
             <br />
             {isVerified && (
               <span style={{ color: "#00ff00" }}>podpis zweryfikowany</span>
